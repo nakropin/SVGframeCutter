@@ -16,6 +16,7 @@ export function buildFrameConfig(
     sourceViewBox: svgData.viewBox,
     cuts,
     grid,
+    partDefs: defs,
     parts,
   };
 }

@@ -1,32 +1,79 @@
 "use client";
 
 import type { FrameConfig, PartType } from "@/lib/types";
+import { getCellRect } from "@/lib/svgCutter";
 
-function getCellViewBox(config: FrameConfig, row: number, col: number): string {
-  const { sourceViewBox: vb, cuts } = config;
-  const xEdges = [vb.x, cuts.x[0], cuts.x[1], cuts.x[2], cuts.x[3], vb.x + vb.width];
-  const yEdges = [vb.y, cuts.y[0], cuts.y[1], cuts.y[2], cuts.y[3], vb.y + vb.height];
-  return `${xEdges[col]} ${yEdges[row]} ${xEdges[col + 1] - xEdges[col]} ${yEdges[row + 1] - yEdges[row]}`;
+function getEdgeOrientation(row: number, col: number): "horizontal" | "vertical" | "corner" {
+  const isTopBottom = row === 0 || row === 4;
+  const isLeftRight = col === 0 || col === 4;
+  if (isTopBottom && isLeftRight) return "corner";
+  if (isTopBottom) return "horizontal";
+  return "vertical";
+}
+
+/**
+ * Compute how to render a part at a given cell position.
+ * - Same orientation as canonical → use canonical viewBox + CSS mirror
+ * - Different orientation → use cell viewBox + SVG transform (rotate + translate)
+ */
+function computeCellRendering(config: FrameConfig, partType: PartType, row: number, col: number) {
+  const { partDefs, sourceViewBox: vb, cuts } = config;
+  const canon = partDefs[partType];
+
+  const canonOrient = getEdgeOrientation(canon.row, canon.col);
+  const cellOrient = getEdgeOrientation(row, col);
+
+  // Mirror if cell is on the opposite side from canonical
+  const mirrorX = (col >= 3) !== (canon.col >= 3);
+  const mirrorY = (row >= 3) !== (canon.row >= 3);
+
+  const needsRotation = canonOrient !== cellOrient
+    && canonOrient !== "corner" && cellOrient !== "corner";
+
+  if (!needsRotation) {
+    // Same orientation: use canonical viewBox, apply CSS mirror
+    const canonRect = getCellRect(vb, cuts, canon.row, canon.col);
+    let cssTransform = "";
+    if (mirrorX && mirrorY) cssTransform = "scale(-1,-1)";
+    else if (mirrorX) cssTransform = "scaleX(-1)";
+    else if (mirrorY) cssTransform = "scaleY(-1)";
+
+    return {
+      viewBox: `${canonRect.x} ${canonRect.y} ${canonRect.w} ${canonRect.h}`,
+      cssTransform: cssTransform || undefined,
+      svgTransform: undefined,
+    };
+  }
+
+  // Different orientation: rotate canonical content into cell region via SVG transform
+  const cellRect = getCellRect(vb, cuts, row, col);
+  const canonRect = getCellRect(vb, cuts, canon.row, canon.col);
+
+  const cellCX = cellRect.x + cellRect.w / 2;
+  const cellCY = cellRect.y + cellRect.h / 2;
+  const canonCX = canonRect.x + canonRect.w / 2;
+  const canonCY = canonRect.y + canonRect.h / 2;
+
+  // Canonical vertical → cell horizontal: rotate -90° (CCW)
+  // Canonical horizontal → cell vertical: rotate 90° (CW)
+  const rotDeg = canonOrient === "vertical" ? -90 : 90;
+
+  // Build SVG transform: move canonical center to cell center, with rotation + mirror
+  let svgTransform = `translate(${cellCX}, ${cellCY})`;
+  if (mirrorX) svgTransform += ` scale(-1,1)`;
+  if (mirrorY) svgTransform += ` scale(1,-1)`;
+  svgTransform += ` rotate(${rotDeg})`;
+  svgTransform += ` translate(${-canonCX}, ${-canonCY})`;
+
+  return {
+    viewBox: `${cellRect.x} ${cellRect.y} ${cellRect.w} ${cellRect.h}`,
+    cssTransform: undefined,
+    svgTransform,
+  };
 }
 
 function isStretchCell(partType: PartType): boolean {
   return partType === "line";
-}
-
-interface FramePartProps {
-  viewBox: string;
-  path: string;
-  fill: string;
-  preserveAspectRatio?: string;
-  style?: React.CSSProperties;
-}
-
-function FramePart({ viewBox, path, fill, preserveAspectRatio = "xMidYMid meet", style }: FramePartProps) {
-  return (
-    <svg viewBox={viewBox} preserveAspectRatio={preserveAspectRatio} className="w-full h-full block" style={style}>
-      <path d={path} fill={fill} />
-    </svg>
-  );
 }
 
 // Keep for test backward compat
@@ -60,12 +107,6 @@ export function ResponsiveFrame({
   const pathData = config.parts.corner.path;
   const t = `${thickness}px`;
 
-  // Explicit grid position for every cell — avoids auto-placement bugs
-  const cellStyle = (r: number, c: number): React.CSSProperties => ({
-    gridColumn: c + 1,
-    gridRow: r + 1,
-  });
-
   return (
     <div
       className={`grid ${className}`}
@@ -75,7 +116,7 @@ export function ResponsiveFrame({
         ...style,
       }}
     >
-      {/* Content area spanning inner 3x3 */}
+      {/* Content area */}
       <div
         className="flex items-center justify-center overflow-auto"
         style={{ gridColumn: "2 / 5", gridRow: "2 / 5" }}
@@ -83,28 +124,34 @@ export function ResponsiveFrame({
         {children}
       </div>
 
-      {/* Render all 25 cells with explicit positions */}
+      {/* Border cells with explicit positions */}
       {grid.map((row, r) =>
         row.map((cell, c) => {
-          // Skip inner cells — content div already covers them
           if (r >= 1 && r <= 3 && c >= 1 && c <= 3) return null;
+          if (!cell) return <div key={`${r}-${c}`} style={{ gridColumn: c + 1, gridRow: r + 1 }} />;
 
-          // Empty border cell
-          if (!cell) {
-            return <div key={`${r}-${c}`} style={cellStyle(r, c)} />;
-          }
-
-          const viewBox = getCellViewBox(config, r, c);
+          const { viewBox, cssTransform, svgTransform } = computeCellRendering(config, cell, r, c);
 
           return (
-            <FramePart
+            <svg
               key={`${r}-${c}`}
               viewBox={viewBox}
-              path={pathData}
-              fill={fill}
               preserveAspectRatio={isStretchCell(cell) ? "none" : "xMidYMid meet"}
-              style={cellStyle(r, c)}
-            />
+              className="w-full h-full block"
+              style={{
+                gridColumn: c + 1,
+                gridRow: r + 1,
+                transform: cssTransform,
+              }}
+            >
+              {svgTransform ? (
+                <g transform={svgTransform}>
+                  <path d={pathData} fill={fill} />
+                </g>
+              ) : (
+                <path d={pathData} fill={fill} />
+              )}
+            </svg>
           );
         })
       )}

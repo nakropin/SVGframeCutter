@@ -33,6 +33,7 @@ export interface FrameConfig {
   sourceViewBox: ViewBox;
   cuts: CutPositions;
   grid: GridAssignment;
+  partDefs: PartDefinitions;
   parts: {
     corner: Part;
     line: Part;
