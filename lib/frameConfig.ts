@@ -1,18 +1,21 @@
-import type { FrameConfig, SvgData, CutPositions } from "./types";
-import { computeParts } from "./svgCutter";
+import type { FrameConfig, SvgData, CutPositions, GridAssignment, PartDefinitions } from "./types";
+import { computeParts, DEFAULT_GRID, DEFAULT_PART_DEFS } from "./svgCutter";
 
 export function buildFrameConfig(
   name: string,
   svgData: SvgData,
-  cuts: CutPositions
+  cuts: CutPositions,
+  grid: GridAssignment = DEFAULT_GRID,
+  defs: PartDefinitions = DEFAULT_PART_DEFS
 ): FrameConfig {
   const combinedPath = svgData.paths.join(" ");
-  const parts = computeParts(svgData.viewBox, cuts, combinedPath);
+  const parts = computeParts(svgData.viewBox, cuts, combinedPath, defs);
 
   return {
     name,
     sourceViewBox: svgData.viewBox,
     cuts,
+    grid,
     parts,
   };
 }

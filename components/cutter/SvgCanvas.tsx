@@ -1,23 +1,45 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import type { SvgData, CutPositions } from "@/lib/types";
+import type { SvgData, CutPositions, PartType, PartDefinitions } from "@/lib/types";
+import { getCellRect } from "@/lib/svgCutter";
 
 interface SvgCanvasProps {
   svgData: SvgData;
   cuts: CutPositions;
+  defaultCuts: CutPositions;
+  partDefs: PartDefinitions;
+  activePartType: PartType | null;
   onCutsChange: (cuts: CutPositions) => void;
+  onZoneClick: (row: number, col: number) => void;
 }
 
 type DragTarget = { axis: "x" | "y"; index: number } | null;
 
-export function SvgCanvas({ svgData, cuts, onCutsChange }: SvgCanvasProps) {
+const PART_COLORS: Record<PartType, { fill: string; stroke: string }> = {
+  corner:   { fill: "rgba(251, 146, 60, 0.2)",  stroke: "rgba(251, 146, 60, 0.7)" },
+  line:     { fill: "rgba(163, 230, 53, 0.2)",  stroke: "rgba(163, 230, 53, 0.7)" },
+  ornament: { fill: "rgba(192, 132, 252, 0.2)", stroke: "rgba(192, 132, 252, 0.7)" },
+};
+
+const PART_LABELS: Record<PartType, string> = {
+  corner: "C", line: "L", ornament: "O",
+};
+
+export function SvgCanvas({ svgData, cuts, defaultCuts, partDefs, activePartType, onCutsChange, onZoneClick }: SvgCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragTarget, setDragTarget] = useState<DragTarget>(null);
   const [hoverTarget, setHoverTarget] = useState<DragTarget>(null);
+  const [hoverZone, setHoverZone] = useState<{ row: number; col: number } | null>(null);
 
   const { viewBox } = svgData;
   const vbString = `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`;
+
+  // Build reverse map: which zone is which part
+  const zonePartMap = new Map<string, PartType>();
+  for (const [type, pos] of Object.entries(partDefs) as [PartType, { row: number; col: number }][]) {
+    zonePartMap.set(`${pos.row},${pos.col}`, type);
+  }
 
   const svgPointFromEvent = useCallback(
     (e: React.MouseEvent): { x: number; y: number } | null => {
@@ -42,6 +64,16 @@ export function SvgCanvas({ svgData, cuts, onCutsChange }: SvgCanvasProps) {
     []
   );
 
+  const handleDoubleClick = useCallback(
+    (axis: "x" | "y", index: number) => (e: React.MouseEvent) => {
+      e.preventDefault();
+      const newCuts = { x: [...cuts.x] as CutPositions["x"], y: [...cuts.y] as CutPositions["y"] };
+      newCuts[axis][index] = defaultCuts[axis][index];
+      onCutsChange(newCuts);
+    },
+    [cuts, defaultCuts, onCutsChange]
+  );
+
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (!dragTarget) return;
@@ -52,7 +84,6 @@ export function SvgCanvas({ svgData, cuts, onCutsChange }: SvgCanvasProps) {
       const value = dragTarget.axis === "x" ? pt.x : pt.y;
       const dim = dragTarget.axis === "x" ? viewBox.width : viewBox.height;
 
-      // Clamp between neighbors (or edges)
       const arr = newCuts[dragTarget.axis];
       const min = dragTarget.index === 0 ? viewBox.x : arr[dragTarget.index - 1] + 1;
       const maxEdge = dragTarget.axis === "x" ? viewBox.x + dim : viewBox.y + dim;
@@ -81,12 +112,65 @@ export function SvgCanvas({ svgData, cuts, onCutsChange }: SvgCanvasProps) {
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      {/* Render SVG paths */}
+      {/* SVG paths */}
       {svgData.paths.map((d, i) => (
         <path key={i} d={d} fill={svgData.fill} />
       ))}
 
-      {/* Vertical cut lines (x-axis) */}
+      {/* 5x5 zone grid: show assigned parts + clickable zones */}
+      {Array.from({ length: 5 }, (_, r) =>
+        Array.from({ length: 5 }, (_, c) => {
+          const rect = getCellRect(viewBox, cuts, r, c);
+          const key = `${r},${c}`;
+          const assignedType = zonePartMap.get(key);
+          const isHovered = hoverZone?.row === r && hoverZone?.col === c;
+
+          return (
+            <g key={`zone-${key}`}>
+              {/* Colored overlay for zones assigned as part definitions */}
+              {assignedType && (
+                <>
+                  <rect
+                    x={rect.x} y={rect.y} width={rect.w} height={rect.h}
+                    fill={PART_COLORS[assignedType].fill}
+                    stroke={PART_COLORS[assignedType].stroke}
+                    strokeWidth={viewBox.width * 0.002}
+                    pointerEvents="none"
+                  />
+                  <text
+                    x={rect.x + rect.w / 2}
+                    y={rect.y + rect.h / 2}
+                    fill={PART_COLORS[assignedType].stroke}
+                    fontSize={Math.min(rect.w, rect.h) * 0.3}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    pointerEvents="none"
+                  >
+                    {PART_LABELS[assignedType]}
+                  </text>
+                </>
+              )}
+
+              {/* Clickable hit area when in assignment mode */}
+              {activePartType && (
+                <rect
+                  x={rect.x} y={rect.y} width={rect.w} height={rect.h}
+                  fill={isHovered ? "rgba(34, 211, 238, 0.15)" : "transparent"}
+                  stroke={isHovered ? lineColorHover : "transparent"}
+                  strokeWidth={viewBox.width * 0.003}
+                  strokeDasharray={`${viewBox.width * 0.008} ${viewBox.width * 0.004}`}
+                  style={{ cursor: "pointer" }}
+                  onClick={(e) => { e.stopPropagation(); onZoneClick(r, c); }}
+                  onMouseEnter={() => setHoverZone({ row: r, col: c })}
+                  onMouseLeave={() => setHoverZone(null)}
+                />
+              )}
+            </g>
+          );
+        })
+      )}
+
+      {/* Vertical cut lines */}
       {cuts.x.map((cx, i) => (
         <g key={`x-${i}`}>
           <line
@@ -101,6 +185,7 @@ export function SvgCanvas({ svgData, cuts, onCutsChange }: SvgCanvasProps) {
             strokeWidth={hitWidth}
             style={{ cursor: "col-resize" }}
             onMouseDown={handleMouseDown("x", i)}
+            onDoubleClick={handleDoubleClick("x", i)}
             onMouseEnter={() => setHoverTarget({ axis: "x", index: i })}
             onMouseLeave={() => setHoverTarget(null)}
           />
@@ -117,7 +202,7 @@ export function SvgCanvas({ svgData, cuts, onCutsChange }: SvgCanvasProps) {
         </g>
       ))}
 
-      {/* Horizontal cut lines (y-axis) */}
+      {/* Horizontal cut lines */}
       {cuts.y.map((cy, i) => (
         <g key={`y-${i}`}>
           <line
@@ -132,6 +217,7 @@ export function SvgCanvas({ svgData, cuts, onCutsChange }: SvgCanvasProps) {
             strokeWidth={hitWidth}
             style={{ cursor: "row-resize" }}
             onMouseDown={handleMouseDown("y", i)}
+            onDoubleClick={handleDoubleClick("y", i)}
             onMouseEnter={() => setHoverTarget({ axis: "y", index: i })}
             onMouseLeave={() => setHoverTarget(null)}
           />

@@ -15,10 +15,24 @@ export interface Part {
   path: string;    // SVG path d attribute
 }
 
+export type PartType = "corner" | "line" | "ornament";
+
+// Which zone (row,col) in the 5x5 cut grid defines each part's clip region
+export interface PartDefinitions {
+  corner: { row: number; col: number };
+  line: { row: number; col: number };
+  ornament: { row: number; col: number };
+}
+
+// 5x5 grid assignment. null = empty (inner content area or unassigned border cell)
+// Row-major: grid[row][col]
+export type GridAssignment = (PartType | null)[][];
+
 export interface FrameConfig {
   name: string;
   sourceViewBox: ViewBox;
   cuts: CutPositions;
+  grid: GridAssignment;
   parts: {
     corner: Part;
     line: Part;

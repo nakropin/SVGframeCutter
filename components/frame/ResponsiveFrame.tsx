@@ -1,11 +1,49 @@
 "use client";
 
-import type { FrameConfig } from "@/lib/types";
+import type { FrameConfig, PartType } from "@/lib/types";
 
-type CornerPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
-type SidePosition = "top" | "right" | "bottom" | "left";
-type Position = CornerPosition | SidePosition;
+/**
+ * Compute the viewBox for a specific cell based on cuts.
+ * Each cell clips its own region from the full SVG path.
+ */
+function getCellViewBox(config: FrameConfig, row: number, col: number): string {
+  const { sourceViewBox: vb, cuts } = config;
+  const xEdges = [vb.x, cuts.x[0], cuts.x[1], cuts.x[2], cuts.x[3], vb.x + vb.width];
+  const yEdges = [vb.y, cuts.y[0], cuts.y[1], cuts.y[2], cuts.y[3], vb.y + vb.height];
+  const x = xEdges[col];
+  const y = yEdges[row];
+  const w = xEdges[col + 1] - xEdges[col];
+  const h = yEdges[row + 1] - yEdges[row];
+  return `${x} ${y} ${w} ${h}`;
+}
 
+/** Lines stretch in one direction */
+function isStretchCell(partType: PartType, row: number, col: number): boolean {
+  if (partType !== "line") return false;
+  return row === 0 || row === 4 || col === 0 || col === 4;
+}
+
+interface FramePartProps {
+  viewBox: string;
+  path: string;
+  fill: string;
+  preserveAspectRatio?: string;
+}
+
+function FramePart({ viewBox, path, fill, preserveAspectRatio = "xMidYMid meet" }: FramePartProps) {
+  return (
+    <svg
+      viewBox={viewBox}
+      preserveAspectRatio={preserveAspectRatio}
+      className="w-full h-full block"
+    >
+      <path d={path} fill={fill} />
+    </svg>
+  );
+}
+
+// Keep this export for backward compat with tests
+type Position = "top-left" | "top-right" | "bottom-left" | "bottom-right" | "top" | "right" | "bottom" | "left";
 export function getTransformForPosition(position: Position): string {
   const transforms: Record<Position, string> = {
     "top-left": "",
@@ -18,27 +56,6 @@ export function getTransformForPosition(position: Position): string {
     left: "rotate(-90)",
   };
   return transforms[position];
-}
-
-interface FramePartProps {
-  viewBox: string;
-  path: string;
-  fill: string;
-  transform?: string;
-  preserveAspectRatio?: string;
-}
-
-function FramePart({ viewBox, path, fill, transform, preserveAspectRatio = "xMidYMid meet" }: FramePartProps) {
-  return (
-    <svg
-      viewBox={viewBox}
-      preserveAspectRatio={preserveAspectRatio}
-      className="w-full h-full block"
-      style={{ transform }}
-    >
-      <path d={path} fill={fill} />
-    </svg>
-  );
 }
 
 interface ResponsiveFrameProps {
@@ -58,7 +75,8 @@ export function ResponsiveFrame({
   style,
   children,
 }: ResponsiveFrameProps) {
-  const { corner, line, ornament } = config.parts;
+  const { grid } = config;
+  const pathData = config.parts.corner.path;
   const t = `${thickness}px`;
 
   return (
@@ -70,42 +88,44 @@ export function ResponsiveFrame({
         ...style,
       }}
     >
-      {/* Row 1: top-left corner | top-line | top-ornament | top-line | top-right corner */}
-      <FramePart viewBox={corner.viewBox} path={corner.path} fill={fill} transform={getTransformForPosition("top-left")} />
-      <FramePart viewBox={line.viewBox} path={line.path} fill={fill} preserveAspectRatio="none" transform={getTransformForPosition("top")} />
-      <FramePart viewBox={ornament.viewBox} path={ornament.path} fill={fill} transform={getTransformForPosition("top")} />
-      <FramePart viewBox={line.viewBox} path={line.path} fill={fill} preserveAspectRatio="none" transform={getTransformForPosition("top")} />
-      <FramePart viewBox={corner.viewBox} path={corner.path} fill={fill} transform={getTransformForPosition("top-right")} />
+      {grid.map((row, r) =>
+        row.map((cell, c) => {
+          // Content area spans inner 3x3
+          if (r >= 1 && r <= 3 && c >= 1 && c <= 3) {
+            if (r === 1 && c === 1) {
+              return (
+                <div
+                  key={`${r}-${c}`}
+                  className="flex items-center justify-center overflow-auto"
+                  style={{ gridColumn: "2 / 5", gridRow: "2 / 5" }}
+                >
+                  {children}
+                </div>
+              );
+            }
+            return <div key={`${r}-${c}`} />;
+          }
 
-      {/* Row 2: left-line | empty | empty | empty | right-line */}
-      <FramePart viewBox={line.viewBox} path={line.path} fill={fill} preserveAspectRatio="none" transform={getTransformForPosition("left")} />
-      <div />
-      <div />
-      <div />
-      <FramePart viewBox={line.viewBox} path={line.path} fill={fill} preserveAspectRatio="none" transform={getTransformForPosition("right")} />
+          // Empty border cell
+          if (!cell) {
+            return <div key={`${r}-${c}`} />;
+          }
 
-      {/* Row 3: left-ornament | empty | content | empty | right-ornament */}
-      <FramePart viewBox={ornament.viewBox} path={ornament.path} fill={fill} transform={getTransformForPosition("left")} />
-      <div />
-      <div className="flex items-center justify-center overflow-auto" style={{ gridColumn: "2 / 5", gridRow: "2 / 5" }}>
-        {children}
-      </div>
-      <div />
-      <FramePart viewBox={ornament.viewBox} path={ornament.path} fill={fill} transform={getTransformForPosition("right")} />
+          // Each cell clips its own region — no transforms needed
+          const viewBox = getCellViewBox(config, r, c);
+          const stretch = isStretchCell(cell, r, c);
 
-      {/* Row 4: left-line | empty | empty | empty | right-line */}
-      <FramePart viewBox={line.viewBox} path={line.path} fill={fill} preserveAspectRatio="none" transform={getTransformForPosition("left")} />
-      <div />
-      <div />
-      <div />
-      <FramePart viewBox={line.viewBox} path={line.path} fill={fill} preserveAspectRatio="none" transform={getTransformForPosition("right")} />
-
-      {/* Row 5: bottom-left corner | bottom-line | bottom-ornament | bottom-line | bottom-right corner */}
-      <FramePart viewBox={corner.viewBox} path={corner.path} fill={fill} transform={getTransformForPosition("bottom-left")} />
-      <FramePart viewBox={line.viewBox} path={line.path} fill={fill} preserveAspectRatio="none" transform={getTransformForPosition("bottom")} />
-      <FramePart viewBox={ornament.viewBox} path={ornament.path} fill={fill} transform={getTransformForPosition("bottom")} />
-      <FramePart viewBox={line.viewBox} path={line.path} fill={fill} preserveAspectRatio="none" transform={getTransformForPosition("bottom")} />
-      <FramePart viewBox={corner.viewBox} path={corner.path} fill={fill} transform={getTransformForPosition("bottom-right")} />
+          return (
+            <FramePart
+              key={`${r}-${c}`}
+              viewBox={viewBox}
+              path={pathData}
+              fill={fill}
+              preserveAspectRatio={stretch ? "none" : "xMidYMid meet"}
+            />
+          );
+        })
+      )}
     </div>
   );
 }
