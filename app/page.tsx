@@ -36,9 +36,25 @@ export default function Home() {
   const [libraryEntries, setLibraryEntries] = useState<LibraryEntry[]>([]);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
 
-  // Load library on mount
+  // Load library on mount, seed bundled examples on first visit
   useEffect(() => {
-    setLibraryEntries(loadLibrary());
+    const entries = loadLibrary();
+    const BUNDLED = [{ name: "Art_Nouveau_frame", path: "/frames/Art_Nouveau_frame.svg" }];
+    const missing = BUNDLED.filter(b => !entries.some(e => e.name === b.name));
+    if (missing.length === 0) {
+      setLibraryEntries(entries);
+      return;
+    }
+    Promise.all(
+      missing.map(async b => {
+        const res = await fetch(b.path);
+        return { name: b.name, svgString: await res.text() };
+      })
+    ).then(loaded => {
+      let all = entries;
+      for (const l of loaded) all = upsertEntry(l);
+      setLibraryEntries(all);
+    });
   }, []);
 
   // Undo/Redo history
