@@ -41,7 +41,7 @@ The `ResponsiveFrame` component renders the frame as a CSS Grid. Fixed-size cell
 
 ```json
 {
-  "name": "WindowFrame8",
+  "name": "Art_Nouveau_frame",
   "gridSize": 5,
   "sourceViewBox": { "x": 0, "y": 0, "width": 912, "height": 612 },
   "cuts": { "x": [182, 365, 547, 730], "y": [122, 245, 367, 490] },
@@ -88,7 +88,7 @@ npm run build   # production build
 3. Import the JSON and render:
 
 ```tsx
-import config from './windowFrame8.json';
+import config from './art_nouveau_frame.json';
 import { ResponsiveFrame } from './components/frame/ResponsiveFrame';
 
 export default function Page() {
