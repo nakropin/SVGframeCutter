@@ -7,10 +7,9 @@ function rectToVB(r: { x: number; y: number; w: number; h: number }): string {
   return `${r.x} ${r.y} ${r.w} ${r.h}`;
 }
 
-function getEdgeOrientation(row: number, col: number, gridSize: number): "horizontal" | "vertical" | "corner" {
-  const last = gridSize - 1;
-  const isTopBottom = row === 0 || row === last;
-  const isLeftRight = col === 0 || col === last;
+function getEdgeOrientation(row: number, col: number, rows: number, cols: number): "horizontal" | "vertical" | "corner" {
+  const isTopBottom = rows > 1 && (row === 0 || row === rows - 1);
+  const isLeftRight = cols > 1 && (col === 0 || col === cols - 1);
   if (isTopBottom && isLeftRight) return "corner";
   if (isTopBottom) return "horizontal";
   return "vertical";
@@ -22,10 +21,9 @@ function computeCellRendering(
   row: number,
   col: number
 ): { viewBox: string; cssTransform?: string; svgTransform?: string } {
-  const { partDefs, sourceViewBox: vb, cuts, gridSize } = config;
+  const { partDefs, sourceViewBox: vb, cuts, gridCols: cols, gridRows: rows } = config;
   const def = partDefs[partId];
   const cellRect = getCellRect(vb, cuts, row, col);
-  const last = gridSize - 1;
 
   // Stretch parts: always use cell's own region, no transforms
   if (def?.stretch) {
@@ -38,8 +36,8 @@ function computeCellRendering(
   const canonRect = getCellRect(vb, cuts, def.row, def.col);
 
   // Mirror: compare which half of the grid (near vs far)
-  const halfCol = Math.floor(last / 2);
-  const halfRow = Math.floor(last / 2);
+  const halfCol = Math.floor((cols - 1) / 2);
+  const halfRow = Math.floor((rows - 1) / 2);
   const mirrorX = (col > halfCol) !== (def.col > halfCol);
   const mirrorY = (row > halfRow) !== (def.row > halfRow);
 
@@ -49,8 +47,8 @@ function computeCellRendering(
   else if (mirrorY) cssMirror = "scaleY(-1)";
 
   // Check if rotation is needed (cross-axis placement)
-  const canonOrient = getEdgeOrientation(def.row, def.col, gridSize);
-  const cellOrient = getEdgeOrientation(row, col, gridSize);
+  const canonOrient = getEdgeOrientation(def.row, def.col, rows, cols);
+  const cellOrient = getEdgeOrientation(row, col, rows, cols);
   const needsRotation = canonOrient !== cellOrient
     && canonOrient !== "corner" && cellOrient !== "corner";
 
@@ -115,27 +113,28 @@ export function ResponsiveFrame({
   style,
   children,
 }: ResponsiveFrameProps) {
-  const { grid, partDefs, gridSize } = config;
+  const { grid, partDefs, gridCols: cols, gridRows: rows } = config;
   const firstPartId = Object.keys(config.parts)[0];
   const pathData = config.parts[firstPartId]?.path ?? "";
   const pathTransform = config.parts[firstPartId]?.transform;
   const t = `${thickness}px`;
-  const last = gridSize - 1;
 
-  // Build grid template: alternating fixed (t) and flexible (1fr)
-  // [t] [1fr] [t] [1fr] [t] ... pattern
-  const template = Array.from({ length: gridSize }, (_, i) => i % 2 === 0 ? t : "1fr").join(" ");
+  // Build grid templates: alternating fixed (t) and flexible (1fr)
+  const buildTemplate = (size: number) =>
+    size === 1 ? "1fr" : Array.from({ length: size }, (_, i) => i % 2 === 0 ? t : "1fr").join(" ");
+  const colTemplate = buildTemplate(cols);
+  const rowTemplate = buildTemplate(rows);
 
-  // Content area spans all inner cells (from col 2 to last, from row 2 to last)
-  const contentCol = `2 / ${last + 1}`;
-  const contentRow = `2 / ${last + 1}`;
+  // Content area spans inner cells
+  const contentCol = cols === 1 ? "1 / 2" : `2 / ${cols}`;
+  const contentRow = rows === 1 ? "1 / 2" : `2 / ${rows}`;
 
   return (
     <div
       className={`grid ${className}`}
       style={{
-        gridTemplateColumns: template,
-        gridTemplateRows: template,
+        gridTemplateColumns: colTemplate,
+        gridTemplateRows: rowTemplate,
         ...style,
       }}
     >
@@ -148,7 +147,14 @@ export function ResponsiveFrame({
 
       {grid.map((row, r) =>
         row.map((cell, c) => {
-          if (r >= 1 && r <= last - 1 && c >= 1 && c <= last - 1) return null;
+          // Skip interior cells
+          const isInnerRow = rows > 1 && r >= 1 && r <= rows - 2;
+          const isInnerCol = cols > 1 && c >= 1 && c <= cols - 2;
+          if (isInnerRow && isInnerCol) return null;
+          // Skip cells on axes with only 1 track (no border there)
+          if (rows === 1 && cols > 1 && c >= 1 && c <= cols - 2) return null;
+          if (cols === 1 && rows > 1 && r >= 1 && r <= rows - 2) return null;
+
           if (!cell) return <div key={`${r}-${c}`} style={{ gridColumn: c + 1, gridRow: r + 1 }} />;
 
           const { viewBox, cssTransform, svgTransform } = computeCellRendering(config, cell, r, c);

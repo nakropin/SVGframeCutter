@@ -29,13 +29,16 @@ export interface PartDef {
 
 export type PartDefsMap = Record<string, PartDef>;
 
-/** NxN grid assignment. null = empty, string = part ID */
+/** Grid assignment (rows × cols). null = empty, string = part ID */
 export type GridAssignment = (string | null)[][];
 
 export interface FrameConfig {
   name: string;
   sourceViewBox: ViewBox;
-  gridSize: number;
+  gridCols: number;
+  gridRows: number;
+  /** @deprecated use gridCols/gridRows */
+  gridSize?: number;
   cuts: CutPositions;
   grid: GridAssignment;
   partDefs: PartDefsMap;

@@ -13,7 +13,8 @@ interface GridAssignerProps {
 
 export function GridAssigner({ grid, partDefs, activePartId, onCellClick }: GridAssignerProps) {
   const partIds = Object.keys(partDefs);
-  const gridSize = grid.length;
+  const rows = grid.length;
+  const cols = grid[0]?.length ?? 0;
 
   return (
     <div className="space-y-2">
@@ -23,10 +24,10 @@ export function GridAssigner({ grid, partDefs, activePartId, onCellClick }: Grid
           <span className="text-cyan-400 ml-2">— click a border cell</span>
         )}
       </h3>
-      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}>
+      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
         {grid.map((row, r) =>
           row.map((cell, c) => {
-            const border = isBorderCell(r, c, gridSize);
+            const border = isBorderCell(r, c, rows, cols);
             const color = cell ? getPartColorById(cell, partIds) : null;
 
             if (!border) {

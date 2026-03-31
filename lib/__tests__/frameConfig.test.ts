@@ -17,10 +17,19 @@ describe("buildFrameConfig", () => {
     const config = buildFrameConfig("TestFrame", svgData, cuts);
     expect(config.name).toBe("TestFrame");
     expect(config.sourceViewBox).toEqual(svgData.viewBox);
+    expect(config.gridCols).toBe(5);
+    expect(config.gridRows).toBe(5);
     expect(config.cuts).toEqual(cuts);
     expect(config.parts.corner).toBeDefined();
     expect(config.parts.line).toBeDefined();
     expect(config.parts.ornament).toBeDefined();
+  });
+
+  it("supports non-square grids", () => {
+    const cuts3x1: CutPositions = { x: [333, 666], y: [] };
+    const config = buildFrameConfig("Button", svgData, cuts3x1, undefined, undefined, 3, 1);
+    expect(config.gridCols).toBe(3);
+    expect(config.gridRows).toBe(1);
   });
 });
 

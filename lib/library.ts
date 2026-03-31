@@ -8,6 +8,8 @@ export interface LibraryEntry {
   zones?: GridAssignment;
   partDefs?: PartDefsMap;
   gridSize?: number;
+  gridCols?: number;
+  gridRows?: number;
   updatedAt: number;
 }
 

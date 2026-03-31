@@ -1,5 +1,8 @@
 import type { ViewBox, CutPositions, Part, GridAssignment, PartDefsMap } from "./types";
 
+export const DEFAULT_GRID_COLS = 5;
+export const DEFAULT_GRID_ROWS = 5;
+/** @deprecated use DEFAULT_GRID_COLS / DEFAULT_GRID_ROWS */
 export const DEFAULT_GRID_SIZE = 5;
 
 export const DEFAULT_PART_DEFS: PartDefsMap = {
@@ -8,28 +11,29 @@ export const DEFAULT_PART_DEFS: PartDefsMap = {
   ornament: { row: 0, col: 2, stretch: false },
 };
 
-export function isBorderCell(row: number, col: number, gridSize: number): boolean {
-  return row === 0 || row === gridSize - 1 || col === 0 || col === gridSize - 1;
+export function isBorderCell(row: number, col: number, rows: number, cols: number): boolean {
+  const onRow = rows > 1 && (row === 0 || row === rows - 1);
+  const onCol = cols > 1 && (col === 0 || col === cols - 1);
+  return onRow || onCol;
 }
 
-export function computeDefaultCuts(viewBox: ViewBox, gridSize: number = DEFAULT_GRID_SIZE): CutPositions {
-  const numCuts = gridSize - 1;
-  const stepX = viewBox.width / gridSize;
-  const stepY = viewBox.height / gridSize;
+export function computeDefaultCuts(viewBox: ViewBox, cols: number = DEFAULT_GRID_COLS, rows: number = DEFAULT_GRID_ROWS): CutPositions {
+  const stepX = viewBox.width / cols;
+  const stepY = viewBox.height / rows;
   return {
-    x: Array.from({ length: numCuts }, (_, i) => stepX * (i + 1)),
-    y: Array.from({ length: numCuts }, (_, i) => stepY * (i + 1)),
+    x: Array.from({ length: cols - 1 }, (_, i) => stepX * (i + 1)),
+    y: Array.from({ length: rows - 1 }, (_, i) => stepY * (i + 1)),
   };
 }
 
-export function buildDefaultGrid(gridSize: number): GridAssignment {
-  const last = gridSize - 1;
-  return Array.from({ length: gridSize }, (_, r) =>
-    Array.from({ length: gridSize }, (_, c) => {
-      const isBorder = r === 0 || r === last || c === 0 || c === last;
-      if (!isBorder) return null;
-      const isCornerRow = r === 0 || r === last;
-      const isCornerCol = c === 0 || c === last;
+export function buildDefaultGrid(cols: number, rows: number): GridAssignment {
+  const lastR = rows - 1;
+  const lastC = cols - 1;
+  return Array.from({ length: rows }, (_, r) =>
+    Array.from({ length: cols }, (_, c) => {
+      if (!isBorderCell(r, c, rows, cols)) return null;
+      const isCornerRow = rows > 1 && (r === 0 || r === lastR);
+      const isCornerCol = cols > 1 && (c === 0 || c === lastC);
       if (isCornerRow && isCornerCol) return "corner";
       return "line";
     })

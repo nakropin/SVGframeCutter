@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { parseSvgString } from "@/lib/svgParser";
-import { computeDefaultCuts, buildDefaultGrid, DEFAULT_PART_DEFS, DEFAULT_GRID_SIZE, isBorderCell } from "@/lib/svgCutter";
+import { computeDefaultCuts, buildDefaultGrid, DEFAULT_PART_DEFS, DEFAULT_GRID_COLS, DEFAULT_GRID_ROWS, isBorderCell } from "@/lib/svgCutter";
 import { buildFrameConfig, serializeConfig } from "@/lib/frameConfig";
 import { loadLibrary, upsertEntry, deleteEntry, type LibraryEntry } from "@/lib/library";
 import { SvgCanvas } from "@/components/cutter/SvgCanvas";
@@ -15,8 +15,8 @@ import type { SvgData, CutPositions, FrameConfig, GridAssignment, PartDefsMap } 
 
 type Tab = "library" | "cutter" | "preview";
 
-function cloneGrid(g: GridAssignment | undefined | null, gridSize: number = DEFAULT_GRID_SIZE): GridAssignment {
-  if (!g || !Array.isArray(g) || g.length !== gridSize) return buildDefaultGrid(gridSize);
+function cloneGrid(g: GridAssignment | undefined | null, cols: number, rows: number): GridAssignment {
+  if (!g || !Array.isArray(g) || g.length !== rows || g[0]?.length !== cols) return buildDefaultGrid(cols, rows);
   return g.map(row => [...row]);
 }
 
@@ -28,8 +28,9 @@ export default function Home() {
   const [config, setConfig] = useState<FrameConfig | null>(null);
   const [tab, setTab] = useState<Tab>("library");
   const [fileName, setFileName] = useState("");
-  const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE);
-  const [grid, setGrid] = useState<GridAssignment>(cloneGrid(null, DEFAULT_GRID_SIZE));
+  const [gridCols, setGridCols] = useState(DEFAULT_GRID_COLS);
+  const [gridRows, setGridRows] = useState(DEFAULT_GRID_ROWS);
+  const [grid, setGrid] = useState<GridAssignment>(cloneGrid(null, DEFAULT_GRID_COLS, DEFAULT_GRID_ROWS));
   const [partDefs, setPartDefs] = useState<PartDefsMap>({ ...DEFAULT_PART_DEFS });
   const [activePartId, setActivePartId] = useState<string | null>(null);
   const [squareCorners, setSquareCorners] = useState(true);
@@ -135,13 +136,13 @@ export default function Home() {
 
   // Click on grid layout cell → assign/unassign a part to a border cell
   const handleGridCellClick = useCallback((row: number, col: number) => {
-    if (!activePartId || !isBorderCell(row, col, gridSize)) return;
+    if (!activePartId || !isBorderCell(row, col, gridRows, gridCols)) return;
     setGrid(prev => {
-      const next = cloneGrid(prev, gridSize);
+      const next = cloneGrid(prev, gridCols, gridRows);
       next[row][col] = prev[row][col] === activePartId ? null : activePartId;
       return next;
     });
-  }, [activePartId, gridSize]);
+  }, [activePartId, gridCols, gridRows]);
 
   const handlePartAdd = useCallback((name: string, stretch: boolean) => {
     setPartDefs(prev => ({ ...prev, [name]: { row: 0, col: 0, stretch } }));
@@ -158,13 +159,14 @@ export default function Home() {
     if (activePartId === id) setActivePartId(null);
   }, [activePartId]);
 
-  const handleGridSizeChange = useCallback((newSize: number) => {
+  const handleGridDimsChange = useCallback((newCols: number, newRows: number) => {
     if (!svgData) return;
-    setGridSize(newSize);
-    const newCuts = computeDefaultCuts(svgData.viewBox, newSize);
+    setGridCols(newCols);
+    setGridRows(newRows);
+    const newCuts = computeDefaultCuts(svgData.viewBox, newCols, newRows);
     setCuts(newCuts);
     setDefaultCuts(newCuts);
-    setGrid(buildDefaultGrid(newSize));
+    setGrid(buildDefaultGrid(newCols, newRows));
     undoStack.current = [];
     redoStack.current = [];
   }, [svgData]);
@@ -198,7 +200,7 @@ export default function Home() {
   useEffect(() => {
     if (svgData && cuts) {
       const name = fileName.replace(/\.svg$/i, "") || "Frame";
-      setConfig(buildFrameConfig(name, svgData, cuts, grid, partDefs, gridSize));
+      setConfig(buildFrameConfig(name, svgData, cuts, grid, partDefs, gridCols, gridRows));
     }
   }, [svgData, cuts, fileName, grid, partDefs]);
 
@@ -206,18 +208,19 @@ export default function Home() {
   useEffect(() => {
     if (!svgString || !fileName || !activeEntryId) return;
     const entries = upsertEntry(
-      { name: fileName.replace(/\.svg$/i, ""), svgString, cuts: cuts ?? undefined, zones: grid, partDefs, gridSize },
+      { name: fileName.replace(/\.svg$/i, ""), svgString, cuts: cuts ?? undefined, zones: grid, partDefs, gridCols, gridRows },
       activeEntryId
     );
     setLibraryEntries(entries);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cuts, grid, partDefs]);
 
-  const openSvg = useCallback((text: string, name: string, entryCuts?: CutPositions, entryGrid?: GridAssignment, entryPartDefs?: PartDefsMap, entryGridSize?: number, entryId?: string) => {
-    const gs = entryGridSize ?? DEFAULT_GRID_SIZE;
+  const openSvg = useCallback((text: string, name: string, entryCuts?: CutPositions, entryGrid?: GridAssignment, entryPartDefs?: PartDefsMap, entryGridSize?: number, entryId?: string, entryCols?: number, entryRows?: number) => {
+    const cols = entryCols ?? entryGridSize ?? DEFAULT_GRID_COLS;
+    const rows = entryRows ?? entryGridSize ?? DEFAULT_GRID_ROWS;
     const parsed = parseSvgString(text);
     const cutsValid = entryCuts && [...entryCuts.x, ...entryCuts.y].every(v => Number.isFinite(v));
-    const initialCuts = cutsValid ? entryCuts : computeDefaultCuts(parsed.viewBox, gs);
+    const initialCuts = cutsValid ? entryCuts : computeDefaultCuts(parsed.viewBox, cols, rows);
     // Ensure all partDefs have stretch property (migration from old format)
     const migratedDefs: PartDefsMap = {};
     const rawDefs = entryPartDefs ?? DEFAULT_PART_DEFS;
@@ -227,10 +230,11 @@ export default function Home() {
     setSvgData(parsed);
     setSvgString(text);
     setCuts(initialCuts);
-    setDefaultCuts(computeDefaultCuts(parsed.viewBox, gs));
+    setDefaultCuts(computeDefaultCuts(parsed.viewBox, cols, rows));
     setFileName(name);
-    setGridSize(gs);
-    setGrid(entryGrid ? cloneGrid(entryGrid, gs) : cloneGrid(null, gs));
+    setGridCols(cols);
+    setGridRows(rows);
+    setGrid(entryGrid ? cloneGrid(entryGrid, cols, rows) : cloneGrid(null, cols, rows));
     setPartDefs(migratedDefs);
     setActiveEntryId(entryId ?? null);
     setTab("cutter");
@@ -253,7 +257,7 @@ export default function Home() {
   }, [openSvg]);
 
   const handleLibrarySelect = useCallback((entry: LibraryEntry) => {
-    openSvg(entry.svgString, entry.name, entry.cuts, entry.zones as GridAssignment | undefined, entry.partDefs as PartDefsMap | undefined, entry.gridSize, entry.id);
+    openSvg(entry.svgString, entry.name, entry.cuts, entry.zones as GridAssignment | undefined, entry.partDefs as PartDefsMap | undefined, entry.gridSize, entry.id, entry.gridCols, entry.gridRows);
   }, [openSvg]);
 
   const handleLibraryDelete = useCallback((id: string) => {
@@ -295,17 +299,21 @@ export default function Home() {
           }
         }
       }
+      const cols = imported.gridCols ?? imported.gridSize ?? DEFAULT_GRID_COLS;
+      const rows = imported.gridRows ?? imported.gridSize ?? DEFAULT_GRID_ROWS;
       setConfig(imported);
       setCuts(imported.cuts);
-      const gs = imported.gridSize ?? DEFAULT_GRID_SIZE;
-      setGridSize(gs);
-      setGrid(imported.grid ?? cloneGrid(null, gs));
+      setGridCols(cols);
+      setGridRows(rows);
+      setGrid(imported.grid ?? cloneGrid(null, cols, rows));
       setPartDefs(imported.partDefs ?? { ...DEFAULT_PART_DEFS });
       setFileName(imported.name);
     } catch {
       alert("Invalid JSON config");
     }
   }, []);
+
+  const gridOptions = [1, 3, 5, 7];
 
   return (
     <main className="flex flex-col h-screen">
@@ -373,17 +381,23 @@ export default function Home() {
                 />
                 Square corners
               </label>
-              <div className="flex items-center gap-2 text-sm text-neutral-400">
-                <span className="text-xs">Grid:</span>
-                {[3, 5, 7].map(s => (
-                  <button
-                    key={s}
-                    onClick={() => handleGridSizeChange(s)}
-                    className={`px-2 py-0.5 text-xs rounded ${gridSize === s ? "bg-neutral-700 text-white" : "text-neutral-500 hover:text-neutral-300"}`}
-                  >
-                    {s}x{s}
-                  </button>
-                ))}
+              <div className="space-y-1 text-sm text-neutral-400">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs w-8">Cols:</span>
+                  {gridOptions.map(n => (
+                    <button key={n} onClick={() => handleGridDimsChange(n, gridRows)}
+                      className={`px-2 py-0.5 text-xs rounded ${gridCols === n ? "bg-neutral-700 text-white" : "text-neutral-500 hover:text-neutral-300"}`}
+                    >{n}</button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs w-8">Rows:</span>
+                  {gridOptions.map(n => (
+                    <button key={n} onClick={() => handleGridDimsChange(gridCols, n)}
+                      className={`px-2 py-0.5 text-xs rounded ${gridRows === n ? "bg-neutral-700 text-white" : "text-neutral-500 hover:text-neutral-300"}`}
+                    >{n}</button>
+                  ))}
+                </div>
               </div>
               {config && <PartsPreview config={config} partDefs={partDefs} fill={svgData.fill} activePartId={activePartId} onPartSelect={setActivePartId} onPartAdd={handlePartAdd} onPartRemove={handlePartRemove} />}
               <GridAssigner grid={grid} partDefs={partDefs} activePartId={activePartId} onCellClick={handleGridCellClick} />

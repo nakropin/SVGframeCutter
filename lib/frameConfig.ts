@@ -1,13 +1,14 @@
 import type { FrameConfig, SvgData, CutPositions, GridAssignment, PartDefsMap } from "./types";
-import { computeParts, buildDefaultGrid, DEFAULT_PART_DEFS, DEFAULT_GRID_SIZE } from "./svgCutter";
+import { computeParts, buildDefaultGrid, DEFAULT_PART_DEFS, DEFAULT_GRID_COLS, DEFAULT_GRID_ROWS } from "./svgCutter";
 
 export function buildFrameConfig(
   name: string,
   svgData: SvgData,
   cuts: CutPositions,
-  grid: GridAssignment = buildDefaultGrid(DEFAULT_GRID_SIZE),
+  grid: GridAssignment = buildDefaultGrid(DEFAULT_GRID_COLS, DEFAULT_GRID_ROWS),
   defs: PartDefsMap = DEFAULT_PART_DEFS,
-  gridSize: number = DEFAULT_GRID_SIZE
+  cols: number = DEFAULT_GRID_COLS,
+  rows: number = DEFAULT_GRID_ROWS
 ): FrameConfig {
   const combinedPath = svgData.paths.map(p => p.d).join(" ");
   const commonTransform = svgData.paths[0]?.transform;
@@ -16,7 +17,8 @@ export function buildFrameConfig(
   return {
     name,
     sourceViewBox: svgData.viewBox,
-    gridSize,
+    gridCols: cols,
+    gridRows: rows,
     cuts,
     grid,
     partDefs: defs,
