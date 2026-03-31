@@ -9,8 +9,9 @@ export function buildFrameConfig(
   defs: PartDefsMap = DEFAULT_PART_DEFS,
   gridSize: number = DEFAULT_GRID_SIZE
 ): FrameConfig {
-  const combinedPath = svgData.paths.join(" ");
-  const parts = computeParts(svgData.viewBox, cuts, combinedPath, defs);
+  const combinedPath = svgData.paths.map(p => p.d).join(" ");
+  const commonTransform = svgData.paths[0]?.transform;
+  const parts = computeParts(svgData.viewBox, cuts, combinedPath, defs, commonTransform);
 
   return {
     name,

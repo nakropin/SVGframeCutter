@@ -71,9 +71,9 @@ export default function Home() {
 
     // Enforce symmetry + square corners
     if (svgData) {
-      const { contentBox } = svgData;
-      const mirrorX = (v: number) => contentBox.x + contentBox.width - (v - contentBox.x);
-      const mirrorY = (v: number) => contentBox.y + contentBox.height - (v - contentBox.y);
+      const { viewBox } = svgData;
+      const mirrorX = (v: number) => viewBox.x + viewBox.width - (v - viewBox.x);
+      const mirrorY = (v: number) => viewBox.y + viewBox.height - (v - viewBox.y);
 
       const symmetric = { x: [...newCuts.x], y: [...newCuts.y] };
       const old = cuts;
@@ -106,13 +106,13 @@ export default function Home() {
           const yChangedLast = newCuts.y[lastY] !== old.y[lastY];
 
           if (xChanged0 || xChangedLast) {
-            const cornerSize = symmetric.x[0] - contentBox.x;
-            symmetric.y[0] = Math.round(contentBox.y + cornerSize);
-            symmetric.y[lastY] = Math.round(mirrorY(contentBox.y + cornerSize));
+            const cornerSize = symmetric.x[0] - viewBox.x;
+            symmetric.y[0] = Math.round(viewBox.y + cornerSize);
+            symmetric.y[lastY] = Math.round(mirrorY(viewBox.y + cornerSize));
           } else if (yChanged0 || yChangedLast) {
-            const cornerSize = symmetric.y[0] - contentBox.y;
-            symmetric.x[0] = Math.round(contentBox.x + cornerSize);
-            symmetric.x[lastX] = Math.round(mirrorX(contentBox.x + cornerSize));
+            const cornerSize = symmetric.y[0] - viewBox.y;
+            symmetric.x[0] = Math.round(viewBox.x + cornerSize);
+            symmetric.x[lastX] = Math.round(mirrorX(viewBox.x + cornerSize));
           }
         }
       }
@@ -161,7 +161,7 @@ export default function Home() {
   const handleGridSizeChange = useCallback((newSize: number) => {
     if (!svgData) return;
     setGridSize(newSize);
-    const newCuts = computeDefaultCuts(svgData.contentBox, newSize);
+    const newCuts = computeDefaultCuts(svgData.viewBox, newSize);
     setCuts(newCuts);
     setDefaultCuts(newCuts);
     setGrid(buildDefaultGrid(newSize));
@@ -217,7 +217,7 @@ export default function Home() {
     const gs = entryGridSize ?? DEFAULT_GRID_SIZE;
     const parsed = parseSvgString(text);
     const cutsValid = entryCuts && [...entryCuts.x, ...entryCuts.y].every(v => Number.isFinite(v));
-    const initialCuts = cutsValid ? entryCuts : computeDefaultCuts(parsed.contentBox, gs);
+    const initialCuts = cutsValid ? entryCuts : computeDefaultCuts(parsed.viewBox, gs);
     // Ensure all partDefs have stretch property (migration from old format)
     const migratedDefs: PartDefsMap = {};
     const rawDefs = entryPartDefs ?? DEFAULT_PART_DEFS;
@@ -227,7 +227,7 @@ export default function Home() {
     setSvgData(parsed);
     setSvgString(text);
     setCuts(initialCuts);
-    setDefaultCuts(computeDefaultCuts(parsed.contentBox, gs));
+    setDefaultCuts(computeDefaultCuts(parsed.viewBox, gs));
     setFileName(name);
     setGridSize(gs);
     setGrid(entryGrid ? cloneGrid(entryGrid, gs) : cloneGrid(null, gs));
@@ -354,7 +354,7 @@ export default function Home() {
               </div>
             </div>
             <div className="w-80 border-l border-neutral-800 p-4 overflow-y-auto space-y-6">
-              <CutControls cuts={cuts} viewBox={svgData.contentBox} onCutsChange={handleCutsChange} />
+              <CutControls cuts={cuts} viewBox={svgData.viewBox} onCutsChange={handleCutsChange} />
               <label className="flex items-center gap-2 text-sm text-neutral-400 cursor-pointer">
                 <input
                   type="checkbox"

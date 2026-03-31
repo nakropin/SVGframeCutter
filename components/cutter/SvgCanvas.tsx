@@ -117,8 +117,8 @@ export function SvgCanvas({ svgData, cuts, defaultCuts, partDefs, activePartId, 
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      {svgData.paths.map((d, i) => (
-        <path key={i} d={d} fill={svgData.fill} />
+      {svgData.paths.map((p, i) => (
+        <path key={i} d={p.d} fill={svgData.fill} transform={p.transform} />
       ))}
 
       {/* Zone overlays */}

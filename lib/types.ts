@@ -10,9 +10,15 @@ export interface CutPositions {
   y: number[]; // G-1 cuts along vertical axis
 }
 
+export interface PathData {
+  d: string;
+  transform?: string;
+}
+
 export interface Part {
   viewBox: string;
   path: string;
+  transform?: string;
 }
 
 export interface PartDef {
@@ -38,8 +44,6 @@ export interface FrameConfig {
 
 export interface SvgData {
   viewBox: ViewBox;
-  /** Original viewBox from SVG file — used for cut computation */
-  contentBox: ViewBox;
-  paths: string[];
+  paths: PathData[];
   fill: string;
 }

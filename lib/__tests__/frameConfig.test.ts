@@ -5,7 +5,7 @@ import type { SvgData, CutPositions } from "@/lib/types";
 describe("buildFrameConfig", () => {
   const svgData: SvgData = {
     viewBox: { x: 0, y: 0, width: 1000, height: 500 },
-    paths: ["M0,0v500h1000V0H0Z"],
+    paths: [{ d: "M0,0v500h1000V0H0Z" }],
     fill: "#fff",
   };
   const cuts: CutPositions = {
@@ -28,7 +28,7 @@ describe("serialize/deserialize", () => {
   it("round-trips a config through JSON", () => {
     const svgData: SvgData = {
       viewBox: { x: 0, y: 0, width: 1000, height: 500 },
-      paths: ["M0,0v500h1000V0H0Z"],
+      paths: [{ d: "M0,0v500h1000V0H0Z" }],
       fill: "#fff",
     };
     const cuts: CutPositions = {

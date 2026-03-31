@@ -51,7 +51,8 @@ export function computeParts(
   viewBox: ViewBox,
   cuts: CutPositions,
   pathData: string,
-  defs: PartDefsMap = DEFAULT_PART_DEFS
+  defs: PartDefsMap = DEFAULT_PART_DEFS,
+  transform?: string
 ): Record<string, Part> {
   const parts: Record<string, Part> = {};
   for (const [id, def] of Object.entries(defs)) {
@@ -59,6 +60,7 @@ export function computeParts(
     parts[id] = {
       viewBox: `${r.x} ${r.y} ${r.w} ${r.h}`,
       path: pathData,
+      transform,
     };
   }
   return parts;

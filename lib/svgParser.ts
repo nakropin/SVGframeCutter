@@ -11,34 +11,29 @@ export function parseSvgString(svgString: string): SvgData {
 
   // Parse viewBox
   const viewBoxAttr = svgEl.getAttribute("viewBox") ?? "0 0 0 0";
-  const [x, y, width, height] = viewBoxAttr.split(/\s+/).map(Number);
+  const [x, y, width, height] = viewBoxAttr.split(/[\s,]+/).filter(Boolean).map(Number);
 
-  // Extract all path d attributes
+  // Extract all path d attributes with ancestor transforms
   const pathEls = doc.querySelectorAll("path");
-  const paths: string[] = [];
+  const paths: { d: string; transform?: string }[] = [];
   for (const p of pathEls) {
     const d = p.getAttribute("d");
-    if (d) paths.push(d);
-  }
+    if (!d) continue;
 
-  // Compute actual bounding box — paths may extend outside the declared viewBox
-  const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  tempSvg.style.cssText = "position:absolute;visibility:hidden;width:0;height:0;overflow:visible";
-  for (const d of paths) {
-    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    p.setAttribute("d", d);
-    tempSvg.appendChild(p);
-  }
-  document.body.appendChild(tempSvg);
-  const bbox = tempSvg.getBBox();
-  document.body.removeChild(tempSvg);
+    // Collect transforms from all ancestors up to (but excluding) the root <svg>
+    const transforms: string[] = [];
+    let el: Element | null = p.parentElement;
+    while (el && el !== svgEl) {
+      const t = el.getAttribute("transform");
+      if (t) transforms.unshift(t);
+      el = el.parentElement;
+    }
 
-  // Expand viewBox to encompass all content
-  const x0 = Math.min(x, bbox.x);
-  const y0 = Math.min(y, bbox.y);
-  const x1 = Math.max(x + width, bbox.x + bbox.width);
-  const y1 = Math.max(y + height, bbox.y + bbox.height);
-  const viewBox = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+    paths.push({
+      d,
+      transform: transforms.length > 0 ? transforms.join(" ") : undefined,
+    });
+  }
 
   // Extract fill from <style> or path attributes
   let fill = "#ffffff";
@@ -48,6 +43,5 @@ export function parseSvgString(svgString: string): SvgData {
     if (fillMatch) fill = fillMatch[1];
   }
 
-  const contentBox = { x, y, width, height };
-  return { viewBox, contentBox, paths, fill };
+  return { viewBox: { x, y, width, height }, paths, fill };
 }

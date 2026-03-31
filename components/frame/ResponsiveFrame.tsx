@@ -118,6 +118,7 @@ export function ResponsiveFrame({
   const { grid, partDefs, gridSize } = config;
   const firstPartId = Object.keys(config.parts)[0];
   const pathData = config.parts[firstPartId]?.path ?? "";
+  const pathTransform = config.parts[firstPartId]?.transform;
   const t = `${thickness}px`;
   const last = gridSize - 1;
 
@@ -162,9 +163,9 @@ export function ResponsiveFrame({
               style={{ gridColumn: c + 1, gridRow: r + 1, transform: cssTransform }}
             >
               {svgTransform ? (
-                <g transform={svgTransform}><path d={pathData} fill={fill} /></g>
+                <g transform={svgTransform}><path d={pathData} fill={fill} transform={pathTransform} /></g>
               ) : (
-                <path d={pathData} fill={fill} />
+                <path d={pathData} fill={fill} transform={pathTransform} />
               )}
             </svg>
           );
