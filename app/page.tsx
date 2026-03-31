@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { parseSvgString } from "@/lib/svgParser";
-import { computeDefaultCuts, DEFAULT_GRID, DEFAULT_PART_DEFS, isBorderCell } from "@/lib/svgCutter";
+import { computeDefaultCuts, buildDefaultGrid, DEFAULT_PART_DEFS, DEFAULT_GRID_SIZE, isBorderCell } from "@/lib/svgCutter";
 import { buildFrameConfig, serializeConfig } from "@/lib/frameConfig";
 import { loadLibrary, upsertEntry, deleteEntry, type LibraryEntry } from "@/lib/library";
 import { SvgCanvas } from "@/components/cutter/SvgCanvas";
@@ -15,8 +15,8 @@ import type { SvgData, CutPositions, FrameConfig, GridAssignment, PartDefsMap } 
 
 type Tab = "library" | "cutter" | "preview";
 
-function cloneGrid(g: GridAssignment | undefined | null): GridAssignment {
-  if (!g || !Array.isArray(g) || g.length !== 5) return DEFAULT_GRID.map(row => [...row]);
+function cloneGrid(g: GridAssignment | undefined | null, gridSize: number = DEFAULT_GRID_SIZE): GridAssignment {
+  if (!g || !Array.isArray(g) || g.length !== gridSize) return buildDefaultGrid(gridSize);
   return g.map(row => [...row]);
 }
 
@@ -28,7 +28,8 @@ export default function Home() {
   const [config, setConfig] = useState<FrameConfig | null>(null);
   const [tab, setTab] = useState<Tab>("library");
   const [fileName, setFileName] = useState("");
-  const [grid, setGrid] = useState<GridAssignment>(cloneGrid(DEFAULT_GRID));
+  const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE);
+  const [grid, setGrid] = useState<GridAssignment>(cloneGrid(null, DEFAULT_GRID_SIZE));
   const [partDefs, setPartDefs] = useState<PartDefsMap>({ ...DEFAULT_PART_DEFS });
   const [activePartId, setActivePartId] = useState<string | null>(null);
   const [squareCorners, setSquareCorners] = useState(true);
@@ -58,43 +59,44 @@ export default function Home() {
       const mirrorX = (v: number) => viewBox.x + viewBox.width - (v - viewBox.x);
       const mirrorY = (v: number) => viewBox.y + viewBox.height - (v - viewBox.y);
 
-      const symmetric = { x: [...newCuts.x] as CutPositions["x"], y: [...newCuts.y] as CutPositions["y"] };
+      const symmetric = { x: [...newCuts.x], y: [...newCuts.y] };
       const old = cuts;
 
       if (old) {
-        // Symmetric pairs: 0↔3, 1↔2
+        // Symmetric pairs: i ↔ (len-1-i) for each axis
         for (const axis of ["x", "y"] as const) {
           const mirrorFn = axis === "x" ? mirrorX : mirrorY;
           const cur = symmetric[axis];
           const prev = old[axis];
+          const len = cur.length;
 
-          if (cur[0] !== prev[0]) {
-            symmetric[axis][3] = Math.round(mirrorFn(cur[0]));
-          } else if (cur[3] !== prev[3]) {
-            symmetric[axis][0] = Math.round(mirrorFn(cur[3]));
-          }
-          if (cur[1] !== prev[1]) {
-            symmetric[axis][2] = Math.round(mirrorFn(cur[1]));
-          } else if (cur[2] !== prev[2]) {
-            symmetric[axis][1] = Math.round(mirrorFn(cur[2]));
+          for (let i = 0; i < Math.floor(len / 2); i++) {
+            const j = len - 1 - i;
+            if (cur[i] !== prev[i]) {
+              cur[j] = Math.round(mirrorFn(cur[i]));
+            } else if (cur[j] !== prev[j]) {
+              cur[i] = Math.round(mirrorFn(cur[j]));
+            }
           }
         }
 
-        // Square corners: keep X and Y corner cuts equal
-        if (squareCorners) {
+        // Square corners: keep first X and Y corner cuts equal
+        if (squareCorners && symmetric.x.length > 0 && symmetric.y.length > 0) {
+          const lastX = symmetric.x.length - 1;
+          const lastY = symmetric.y.length - 1;
           const xChanged0 = symmetric.x[0] !== old.x[0];
           const yChanged0 = symmetric.y[0] !== old.y[0];
-          const xChanged3 = newCuts.x[3] !== old.x[3];
-          const yChanged3 = newCuts.y[3] !== old.y[3];
+          const xChangedLast = newCuts.x[lastX] !== old.x[lastX];
+          const yChangedLast = newCuts.y[lastY] !== old.y[lastY];
 
-          if (xChanged0 || xChanged3) {
+          if (xChanged0 || xChangedLast) {
             const cornerSize = symmetric.x[0] - viewBox.x;
             symmetric.y[0] = Math.round(viewBox.y + cornerSize);
-            symmetric.y[3] = Math.round(mirrorY(viewBox.y + cornerSize));
-          } else if (yChanged0 || yChanged3) {
+            symmetric.y[lastY] = Math.round(mirrorY(viewBox.y + cornerSize));
+          } else if (yChanged0 || yChangedLast) {
             const cornerSize = symmetric.y[0] - viewBox.y;
             symmetric.x[0] = Math.round(viewBox.x + cornerSize);
-            symmetric.x[3] = Math.round(mirrorX(viewBox.x + cornerSize));
+            symmetric.x[lastX] = Math.round(mirrorX(viewBox.x + cornerSize));
           }
         }
       }
@@ -117,7 +119,7 @@ export default function Home() {
 
   // Click on grid layout cell → assign/unassign a part to a border cell
   const handleGridCellClick = useCallback((row: number, col: number) => {
-    if (!activePartId || !isBorderCell(row, col)) return;
+    if (!activePartId || !isBorderCell(row, col, gridSize)) return;
     setGrid(prev => {
       const next = cloneGrid(prev);
       next[row][col] = prev[row][col] === activePartId ? null : activePartId;
@@ -139,6 +141,17 @@ export default function Home() {
     setGrid(prev => prev.map(row => row.map(cell => cell === id ? null : cell)));
     if (activePartId === id) setActivePartId(null);
   }, [activePartId]);
+
+  const handleGridSizeChange = useCallback((newSize: number) => {
+    if (!svgData) return;
+    setGridSize(newSize);
+    const newCuts = computeDefaultCuts(svgData.viewBox, newSize);
+    setCuts(newCuts);
+    setDefaultCuts(newCuts);
+    setGrid(buildDefaultGrid(newSize));
+    undoStack.current = [];
+    redoStack.current = [];
+  }, [svgData]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -169,7 +182,7 @@ export default function Home() {
   useEffect(() => {
     if (svgData && cuts) {
       const name = fileName.replace(/\.svg$/i, "") || "Frame";
-      setConfig(buildFrameConfig(name, svgData, cuts, grid, partDefs));
+      setConfig(buildFrameConfig(name, svgData, cuts, grid, partDefs, gridSize));
     }
   }, [svgData, cuts, fileName, grid, partDefs]);
 
@@ -177,22 +190,24 @@ export default function Home() {
   useEffect(() => {
     if (!svgString || !fileName || !activeEntryId) return;
     const entries = upsertEntry(
-      { name: fileName.replace(/\.svg$/i, ""), svgString, cuts: cuts ?? undefined, zones: grid, partDefs },
+      { name: fileName.replace(/\.svg$/i, ""), svgString, cuts: cuts ?? undefined, zones: grid, partDefs, gridSize },
       activeEntryId
     );
     setLibraryEntries(entries);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cuts, grid, partDefs]);
 
-  const openSvg = useCallback((text: string, name: string, entryCuts?: CutPositions, entryGrid?: GridAssignment, entryPartDefs?: PartDefsMap, entryId?: string) => {
+  const openSvg = useCallback((text: string, name: string, entryCuts?: CutPositions, entryGrid?: GridAssignment, entryPartDefs?: PartDefsMap, entryGridSize?: number, entryId?: string) => {
+    const gs = entryGridSize ?? DEFAULT_GRID_SIZE;
     const parsed = parseSvgString(text);
-    const initialCuts = entryCuts ?? computeDefaultCuts(parsed.viewBox);
+    const initialCuts = entryCuts ?? computeDefaultCuts(parsed.viewBox, gs);
     setSvgData(parsed);
     setSvgString(text);
     setCuts(initialCuts);
-    setDefaultCuts(computeDefaultCuts(parsed.viewBox));
+    setDefaultCuts(computeDefaultCuts(parsed.viewBox, gs));
     setFileName(name);
-    setGrid(entryGrid ? cloneGrid(entryGrid) : cloneGrid(DEFAULT_GRID));
+    setGridSize(gs);
+    setGrid(entryGrid ? cloneGrid(entryGrid, gs) : cloneGrid(null, gs));
     setPartDefs(entryPartDefs ?? { ...DEFAULT_PART_DEFS });
     setActiveEntryId(entryId ?? null);
     setTab("cutter");
@@ -215,7 +230,7 @@ export default function Home() {
   }, [openSvg]);
 
   const handleLibrarySelect = useCallback((entry: LibraryEntry) => {
-    openSvg(entry.svgString, entry.name, entry.cuts, entry.zones as GridAssignment | undefined, entry.partDefs as PartDefsMap | undefined, entry.id);
+    openSvg(entry.svgString, entry.name, entry.cuts, entry.zones as GridAssignment | undefined, entry.partDefs as PartDefsMap | undefined, entry.gridSize, entry.id);
   }, [openSvg]);
 
   const handleLibraryDelete = useCallback((id: string) => {
@@ -251,7 +266,9 @@ export default function Home() {
       const imported = JSON.parse(text) as FrameConfig;
       setConfig(imported);
       setCuts(imported.cuts);
-      setGrid(imported.grid ?? cloneGrid(DEFAULT_GRID));
+      const gs = imported.gridSize ?? DEFAULT_GRID_SIZE;
+      setGridSize(gs);
+      setGrid(imported.grid ?? cloneGrid(null, gs));
       setFileName(imported.name);
     } catch {
       alert("Invalid JSON config");
@@ -322,6 +339,18 @@ export default function Home() {
                 />
                 Square corners
               </label>
+              <div className="flex items-center gap-2 text-sm text-neutral-400">
+                <span className="text-xs">Grid:</span>
+                {[3, 5, 7].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => handleGridSizeChange(s)}
+                    className={`px-2 py-0.5 text-xs rounded ${gridSize === s ? "bg-neutral-700 text-white" : "text-neutral-500 hover:text-neutral-300"}`}
+                  >
+                    {s}x{s}
+                  </button>
+                ))}
+              </div>
               {config && <PartsPreview config={config} partDefs={partDefs} fill={svgData.fill} activePartId={activePartId} onPartSelect={setActivePartId} onPartAdd={handlePartAdd} onPartRemove={handlePartRemove} />}
               <GridAssigner grid={grid} partDefs={partDefs} activePartId={activePartId} onCellClick={handleGridCellClick} />
             </div>

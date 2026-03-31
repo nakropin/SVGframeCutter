@@ -7,6 +7,7 @@ export interface LibraryEntry {
   cuts?: CutPositions;
   zones?: GridAssignment;
   partDefs?: PartDefsMap;
+  gridSize?: number;
   updatedAt: number;
 }
 

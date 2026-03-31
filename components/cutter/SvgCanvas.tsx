@@ -121,8 +121,8 @@ export function SvgCanvas({ svgData, cuts, defaultCuts, partDefs, activePartId, 
       ))}
 
       {/* Zone overlays */}
-      {Array.from({ length: 5 }, (_, r) =>
-        Array.from({ length: 5 }, (_, c) => {
+      {Array.from({ length: cuts.y.length + 1 }, (_, r) =>
+        Array.from({ length: cuts.x.length + 1 }, (_, c) => {
           const rect = getCellRect(viewBox, cuts, r, c);
           const key = `${r},${c}`;
           const assignedId = zonePartMap.get(key);

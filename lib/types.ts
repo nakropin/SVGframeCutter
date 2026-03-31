@@ -6,8 +6,8 @@ export interface ViewBox {
 }
 
 export interface CutPositions {
-  x: [number, number, number, number];
-  y: [number, number, number, number];
+  x: number[]; // G-1 cuts along horizontal axis (G = grid size)
+  y: number[]; // G-1 cuts along vertical axis
 }
 
 export interface Part {
@@ -15,22 +15,21 @@ export interface Part {
   path: string;
 }
 
-/** Definition of a single part type */
 export interface PartDef {
-  row: number;     // canonical zone row
-  col: number;     // canonical zone col
-  stretch: boolean; // true = stretches to fill (like lines), false = preserves aspect ratio
+  row: number;
+  col: number;
+  stretch: boolean;
 }
 
-/** All part definitions keyed by part ID */
 export type PartDefsMap = Record<string, PartDef>;
 
-/** 5x5 grid assignment. null = empty, string = part ID */
+/** NxN grid assignment. null = empty, string = part ID */
 export type GridAssignment = (string | null)[][];
 
 export interface FrameConfig {
   name: string;
   sourceViewBox: ViewBox;
+  gridSize: number;
   cuts: CutPositions;
   grid: GridAssignment;
   partDefs: PartDefsMap;

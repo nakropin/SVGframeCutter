@@ -8,38 +8,34 @@ interface CutControlsProps {
   onCutsChange: (cuts: CutPositions) => void;
 }
 
-const LABELS = ["Cut 1", "Cut 2", "Cut 3", "Cut 4"];
-const ZONE_LABELS = ["Corner", "Line", "Ornament", "Line", "Corner"];
-
 export function CutControls({ cuts, viewBox, onCutsChange }: CutControlsProps) {
   const updateCut = (axis: "x" | "y", index: number, value: number) => {
     const newCuts = {
-      x: [...cuts.x] as CutPositions["x"],
-      y: [...cuts.y] as CutPositions["y"],
+      x: [...cuts.x],
+      y: [...cuts.y],
     };
     const dim = axis === "x" ? viewBox.width : viewBox.height;
     const origin = axis === "x" ? viewBox.x : viewBox.y;
     const arr = newCuts[axis];
+    const last = arr.length - 1;
 
-    // Clamp between neighbors
     const min = index === 0 ? origin : arr[index - 1] + 1;
-    const max = index === 3 ? origin + dim - 1 : arr[index + 1] - 1;
+    const max = index === last ? origin + dim - 1 : arr[index + 1] - 1;
     arr[index] = Math.round(Math.max(min, Math.min(max, value)));
 
     onCutsChange(newCuts);
   };
 
+  const numCuts = cuts.x.length;
+
   return (
     <div className="space-y-4">
       <div>
         <h3 className="text-xs uppercase tracking-wider text-neutral-500 mb-2">Horizontal Cuts (X)</h3>
-        <div className="text-xs text-neutral-600 mb-2 font-mono">
-          {ZONE_LABELS.join(" | ")}
-        </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${Math.min(numCuts, 4)}, 1fr)` }}>
           {cuts.x.map((val, i) => (
             <div key={`x-${i}`}>
-              <label className="text-xs text-neutral-500">{LABELS[i]}</label>
+              <label className="text-xs text-neutral-500">Cut {i + 1}</label>
               <input
                 type="number"
                 value={Math.round(val)}
@@ -54,10 +50,10 @@ export function CutControls({ cuts, viewBox, onCutsChange }: CutControlsProps) {
       </div>
       <div>
         <h3 className="text-xs uppercase tracking-wider text-neutral-500 mb-2">Vertical Cuts (Y)</h3>
-        <div className="grid grid-cols-4 gap-2">
+        <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${Math.min(numCuts, 4)}, 1fr)` }}>
           {cuts.y.map((val, i) => (
             <div key={`y-${i}`}>
-              <label className="text-xs text-neutral-500">{LABELS[i]}</label>
+              <label className="text-xs text-neutral-500">Cut {i + 1}</label>
               <input
                 type="number"
                 value={Math.round(val)}
