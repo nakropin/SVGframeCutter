@@ -29,7 +29,10 @@ export function FramePreview({ config, fill }: FramePreviewProps) {
           thickness={thickness}
           fill={fill}
           className="transition-all duration-150"
-          style={{ width: `${width}px`, height: `${height}px` }}
+          style={{
+            ...(config.gridCols > 1 ? { width: `${width}px` } : {}),
+            ...(config.gridRows > 1 ? { height: `${height}px` } : {}),
+          }}
         >
           <p className="text-neutral-600 text-sm text-center px-4">
             Content goes here. Resize the frame using the sliders above.

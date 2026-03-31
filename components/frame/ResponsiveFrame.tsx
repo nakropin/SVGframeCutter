@@ -122,8 +122,9 @@ export function ResponsiveFrame({
   // Build grid templates: alternating fixed (t) and flexible (1fr)
   const buildTemplate = (size: number) =>
     Array.from({ length: size }, (_, i) => i % 2 === 0 ? t : "1fr").join(" ");
-  const colTemplate = cols === 1 ? "1fr" : buildTemplate(cols);
-  const rowTemplate = rows === 1 ? "1fr" : buildTemplate(rows);
+  // Single-axis: all tracks use thickness (no flexible content track)
+  const colTemplate = cols === 1 ? t : buildTemplate(cols);
+  const rowTemplate = rows === 1 ? t : buildTemplate(rows);
 
   // Content area spans inner cells
   const contentCol = cols === 1 ? "1 / 2" : `2 / ${cols}`;
@@ -151,12 +152,14 @@ export function ResponsiveFrame({
 
           const { viewBox, cssTransform, svgTransform } = computeCellRendering(config, cell, r, c);
           const stretch = partDefs[cell]?.stretch ?? false;
+          // Single-axis grids: all parts stretch to fill (corners + lines same height)
+          const singleAxis = rows === 1 || cols === 1;
 
           return (
             <svg
               key={`${r}-${c}`}
               viewBox={viewBox}
-              preserveAspectRatio={stretch ? "none" : "xMidYMid meet"}
+              preserveAspectRatio={(stretch || singleAxis) ? "none" : "xMidYMid meet"}
               className="w-full h-full block"
               style={{ gridColumn: c + 1, gridRow: r + 1, transform: cssTransform }}
             >
