@@ -99,3 +99,7 @@ export default function Page() {
   );
 }
 ```
+
+## Credits
+
+Example SVG frame sourced from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Art_Nouveau_frame.svg) (public domain).
