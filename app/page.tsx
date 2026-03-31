@@ -354,7 +354,7 @@ export default function Home() {
 
       <div className="flex-1 overflow-hidden">
         {tab === "library" ? (
-          <Library entries={libraryEntries} onSelect={handleLibrarySelect} onDelete={handleLibraryDelete} />
+          <Library entries={libraryEntries} onSelect={handleLibrarySelect} onDelete={handleLibraryDelete} onFileDrop={(name, text) => openSvg(text, name)} />
         ) : tab === "cutter" && svgData && cuts ? (
           <div className="flex h-full">
             <div className="flex-1 min-w-0 min-h-0 relative bg-neutral-950 overflow-hidden">
