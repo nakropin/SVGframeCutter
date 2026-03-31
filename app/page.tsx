@@ -331,7 +331,7 @@ export default function Home() {
           <Library entries={libraryEntries} onSelect={handleLibrarySelect} onDelete={handleLibraryDelete} />
         ) : tab === "cutter" && svgData && cuts ? (
           <div className="flex h-full">
-            <div className="flex-1 p-4 flex items-center justify-center bg-neutral-950">
+            <div className="flex-1 min-w-0 min-h-0 p-4 flex items-center justify-center bg-neutral-950 overflow-hidden">
               <SvgCanvas svgData={svgData} cuts={cuts} defaultCuts={defaultCuts!} partDefs={partDefs} activePartId={activePartId} onCutsChange={handleCutsChange} onZoneClick={handleZoneClick} />
             </div>
             <div className="w-80 border-l border-neutral-800 p-4 overflow-y-auto space-y-6">
