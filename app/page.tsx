@@ -287,11 +287,20 @@ export default function Home() {
     const text = await file.text();
     try {
       const imported = JSON.parse(text) as FrameConfig;
+      // Migrate partDefs: ensure stretch property exists
+      if (imported.partDefs) {
+        for (const [id, def] of Object.entries(imported.partDefs)) {
+          if (def.stretch === undefined) {
+            def.stretch = DEFAULT_PART_DEFS[id]?.stretch ?? false;
+          }
+        }
+      }
       setConfig(imported);
       setCuts(imported.cuts);
       const gs = imported.gridSize ?? DEFAULT_GRID_SIZE;
       setGridSize(gs);
       setGrid(imported.grid ?? cloneGrid(null, gs));
+      setPartDefs(imported.partDefs ?? { ...DEFAULT_PART_DEFS });
       setFileName(imported.name);
     } catch {
       alert("Invalid JSON config");
