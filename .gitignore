@@ -29,3 +29,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Licensed SVG frames (add free/own frames explicitly with git add -f)
+# Only public/frames/Art_Nouveau_frame.svg is included as example
+public/frames/WindowFrame*.svg
