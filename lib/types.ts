@@ -38,6 +38,8 @@ export interface FrameConfig {
 
 export interface SvgData {
   viewBox: ViewBox;
+  /** Original viewBox from SVG file — used for cut computation */
+  contentBox: ViewBox;
   paths: string[];
   fill: string;
 }

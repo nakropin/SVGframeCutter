@@ -21,6 +21,25 @@ export function parseSvgString(svgString: string): SvgData {
     if (d) paths.push(d);
   }
 
+  // Compute actual bounding box — paths may extend outside the declared viewBox
+  const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  tempSvg.style.cssText = "position:absolute;visibility:hidden;width:0;height:0;overflow:visible";
+  for (const d of paths) {
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", d);
+    tempSvg.appendChild(p);
+  }
+  document.body.appendChild(tempSvg);
+  const bbox = tempSvg.getBBox();
+  document.body.removeChild(tempSvg);
+
+  // Expand viewBox to encompass all content
+  const x0 = Math.min(x, bbox.x);
+  const y0 = Math.min(y, bbox.y);
+  const x1 = Math.max(x + width, bbox.x + bbox.width);
+  const y1 = Math.max(y + height, bbox.y + bbox.height);
+  const viewBox = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
+
   // Extract fill from <style> or path attributes
   let fill = "#ffffff";
   const styleEl = doc.querySelector("style");
@@ -29,5 +48,6 @@ export function parseSvgString(svgString: string): SvgData {
     if (fillMatch) fill = fillMatch[1];
   }
 
-  return { viewBox: { x, y, width, height }, paths, fill };
+  const contentBox = { x, y, width, height };
+  return { viewBox, contentBox, paths, fill };
 }

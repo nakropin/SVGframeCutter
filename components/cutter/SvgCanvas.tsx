@@ -94,7 +94,7 @@ export function SvgCanvas({ svgData, cuts, defaultCuts, partDefs, activePartId, 
       const arr = newCuts[dragTarget.axis];
       const min = dragTarget.index === 0 ? viewBox.x : arr[dragTarget.index - 1] + 1;
       const maxEdge = dragTarget.axis === "x" ? viewBox.x + dim : viewBox.y + dim;
-      const max = dragTarget.index === 3 ? maxEdge - 1 : arr[dragTarget.index + 1] - 1;
+      const max = dragTarget.index === arr.length - 1 ? maxEdge - 1 : arr[dragTarget.index + 1] - 1;
       arr[dragTarget.index] = Math.round(Math.max(min, Math.min(max, value)));
       onCutsChange(newCuts);
     },
@@ -111,7 +111,8 @@ export function SvgCanvas({ svgData, cuts, defaultCuts, partDefs, activePartId, 
     <svg
       ref={svgRef}
       viewBox={vbString}
-      style={{ display: "block", maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto" }}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ display: "block", maxWidth: "100%", maxHeight: "100%" }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
@@ -124,6 +125,7 @@ export function SvgCanvas({ svgData, cuts, defaultCuts, partDefs, activePartId, 
       {Array.from({ length: cuts.y.length + 1 }, (_, r) =>
         Array.from({ length: cuts.x.length + 1 }, (_, c) => {
           const rect = getCellRect(viewBox, cuts, r, c);
+          if (isNaN(rect.w) || isNaN(rect.h)) return null;
           const key = `${r},${c}`;
           const assignedId = zonePartMap.get(key);
           const isHovered = hoverZone?.row === r && hoverZone?.col === c;
