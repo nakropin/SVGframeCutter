@@ -201,6 +201,12 @@ export default function Home() {
     const gs = entryGridSize ?? DEFAULT_GRID_SIZE;
     const parsed = parseSvgString(text);
     const initialCuts = entryCuts ?? computeDefaultCuts(parsed.viewBox, gs);
+    // Ensure all partDefs have stretch property (migration from old format)
+    const migratedDefs: PartDefsMap = {};
+    const rawDefs = entryPartDefs ?? DEFAULT_PART_DEFS;
+    for (const [id, def] of Object.entries(rawDefs)) {
+      migratedDefs[id] = { ...def, stretch: def.stretch ?? DEFAULT_PART_DEFS[id]?.stretch ?? false };
+    }
     setSvgData(parsed);
     setSvgString(text);
     setCuts(initialCuts);
@@ -208,7 +214,7 @@ export default function Home() {
     setFileName(name);
     setGridSize(gs);
     setGrid(entryGrid ? cloneGrid(entryGrid, gs) : cloneGrid(null, gs));
-    setPartDefs(entryPartDefs ?? { ...DEFAULT_PART_DEFS });
+    setPartDefs(migratedDefs);
     setActiveEntryId(entryId ?? null);
     setTab("cutter");
     undoStack.current = [];
