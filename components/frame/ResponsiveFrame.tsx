@@ -140,7 +140,7 @@ export function ResponsiveFrame({
       }}
     >
       <div
-        className="flex items-center justify-center overflow-auto"
+        className="flex items-center justify-center overflow-hidden"
         style={{ gridColumn: contentCol, gridRow: contentRow }}
       >
         {children}
