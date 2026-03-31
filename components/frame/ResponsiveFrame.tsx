@@ -1,6 +1,6 @@
 "use client";
 
-import type { FrameConfig, PartType } from "@/lib/types";
+import type { FrameConfig } from "@/lib/types";
 import { getCellRect } from "@/lib/svgCutter";
 
 function rectToVB(r: { x: number; y: number; w: number; h: number }): string {
@@ -17,60 +17,51 @@ function getEdgeOrientation(row: number, col: number): "horizontal" | "vertical"
 
 function computeCellRendering(
   config: FrameConfig,
-  partType: PartType,
+  partId: string,
   row: number,
   col: number
 ): { viewBox: string; cssTransform?: string; svgTransform?: string } {
   const { partDefs, sourceViewBox: vb, cuts } = config;
+  const def = partDefs[partId];
   const cellRect = getCellRect(vb, cuts, row, col);
 
-  // Lines: always use cell's own region, no transforms — they just stretch
-  if (partType === "line") {
+  // Stretch parts: always use cell's own region, no transforms
+  if (def?.stretch) {
     return { viewBox: rectToVB(cellRect) };
   }
 
-  const canon = partDefs[partType];
-  const canonRect = getCellRect(vb, cuts, canon.row, canon.col);
+  // No definition found: fallback to cell's own region
+  if (!def) return { viewBox: rectToVB(cellRect) };
 
-  // Mirror if cell and canonical are on opposite sides
-  const mirrorX = (col >= 3) !== (canon.col >= 3);
-  const mirrorY = (row >= 3) !== (canon.row >= 3);
+  const canonRect = getCellRect(vb, cuts, def.row, def.col);
+
+  const mirrorX = (col >= 3) !== (def.col >= 3);
+  const mirrorY = (row >= 3) !== (def.row >= 3);
 
   let cssMirror = "";
   if (mirrorX && mirrorY) cssMirror = "scale(-1,-1)";
   else if (mirrorX) cssMirror = "scaleX(-1)";
   else if (mirrorY) cssMirror = "scaleY(-1)";
 
-  // Corners: canonical viewBox + CSS mirror only
-  if (partType === "corner") {
-    return {
-      viewBox: rectToVB(canonRect),
-      cssTransform: cssMirror || undefined,
-    };
-  }
-
-  // Ornaments: check if rotation is needed (cross-axis placement)
-  const canonOrient = getEdgeOrientation(canon.row, canon.col);
+  // Check if rotation is needed (cross-axis placement)
+  const canonOrient = getEdgeOrientation(def.row, def.col);
   const cellOrient = getEdgeOrientation(row, col);
   const needsRotation = canonOrient !== cellOrient
     && canonOrient !== "corner" && cellOrient !== "corner";
 
   if (!needsRotation) {
-    // Same axis: canonical viewBox + CSS mirror
     return {
       viewBox: rectToVB(canonRect),
       cssTransform: cssMirror || undefined,
     };
   }
 
-  // Cross-axis ornament: SVG-internal rotation
+  // Cross-axis: SVG-internal rotation
   const cellCX = cellRect.x + cellRect.w / 2;
   const cellCY = cellRect.y + cellRect.h / 2;
   const canonCX = canonRect.x + canonRect.w / 2;
   const canonCY = canonRect.y + canonRect.h / 2;
 
-  // Canonical vertical → cell horizontal: rotate 90° CW
-  // Canonical horizontal → cell vertical: rotate -90° CCW
   const rotDeg = canonOrient === "vertical" ? 90 : -90;
 
   let svgTransform = `translate(${cellCX}, ${cellCY})`;
@@ -79,7 +70,6 @@ function computeCellRendering(
   svgTransform += ` rotate(${rotDeg})`;
   svgTransform += ` translate(${-canonCX}, ${-canonCY})`;
 
-  // ViewBox = bounding box of the rotated canonical rect (swapped w/h, centered on cell)
   const rotatedVB = {
     x: cellCX - canonRect.h / 2,
     y: cellCY - canonRect.w / 2,
@@ -120,8 +110,10 @@ export function ResponsiveFrame({
   style,
   children,
 }: ResponsiveFrameProps) {
-  const { grid } = config;
-  const pathData = config.parts.corner.path;
+  const { grid, partDefs } = config;
+  // Get path from first available part
+  const firstPartId = Object.keys(config.parts)[0];
+  const pathData = config.parts[firstPartId]?.path ?? "";
   const t = `${thickness}px`;
 
   return (
@@ -146,7 +138,7 @@ export function ResponsiveFrame({
           if (!cell) return <div key={`${r}-${c}`} style={{ gridColumn: c + 1, gridRow: r + 1 }} />;
 
           const { viewBox, cssTransform, svgTransform } = computeCellRendering(config, cell, r, c);
-          const stretch = cell === "line";
+          const stretch = partDefs[cell]?.stretch ?? false;
 
           return (
             <svg
@@ -154,16 +146,10 @@ export function ResponsiveFrame({
               viewBox={viewBox}
               preserveAspectRatio={stretch ? "none" : "xMidYMid meet"}
               className="w-full h-full block"
-              style={{
-                gridColumn: c + 1,
-                gridRow: r + 1,
-                transform: cssTransform,
-              }}
+              style={{ gridColumn: c + 1, gridRow: r + 1, transform: cssTransform }}
             >
               {svgTransform ? (
-                <g transform={svgTransform}>
-                  <path d={pathData} fill={fill} />
-                </g>
+                <g transform={svgTransform}><path d={pathData} fill={fill} /></g>
               ) : (
                 <path d={pathData} fill={fill} />
               )}

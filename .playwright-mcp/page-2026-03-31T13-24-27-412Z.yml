@@ -1,0 +1,47 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - heading "frameCutter" [level=1] [ref=e4]
+      - generic [ref=e5]:
+        - button "Library" [ref=e6]
+        - button "Cutter" [ref=e7]
+        - button "Preview" [active] [ref=e8]
+        - generic [ref=e10] [cursor=pointer]: Load SVG
+        - generic [ref=e11] [cursor=pointer]: Import JSON
+        - button "Export JSON" [ref=e25]
+    - generic [ref=e108]:
+      - heading "Frame Preview" [level=3] [ref=e109]
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - generic [ref=e112]: Thickness
+          - slider [ref=e113]: "60"
+          - spinbutton [ref=e114]: "60"
+        - generic [ref=e115]:
+          - generic [ref=e116]: Width
+          - slider [ref=e117]: "600"
+          - spinbutton [ref=e118]: "600"
+        - generic [ref=e119]:
+          - generic [ref=e120]: Height
+          - slider [ref=e121]: "400"
+          - spinbutton [ref=e122]: "400"
+      - generic [ref=e124]:
+        - img [ref=e125]
+        - img [ref=e127]
+        - img [ref=e129]
+        - img [ref=e131]
+        - img [ref=e133]
+        - img [ref=e135]
+        - paragraph [ref=e138]: Content goes here. Resize the frame using the sliders above.
+        - img [ref=e139]
+        - img [ref=e141]
+        - img [ref=e143]
+        - img [ref=e145]
+        - img [ref=e147]
+        - img [ref=e149]
+        - img [ref=e151]
+        - img [ref=e153]
+        - img [ref=e155]
+        - img [ref=e157]
+  - button "Open Next.js Dev Tools" [ref=e20] [cursor=pointer]:
+    - img [ref=e21]
+  - alert [ref=e24]

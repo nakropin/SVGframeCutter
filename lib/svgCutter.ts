@@ -1,4 +1,10 @@
-import type { ViewBox, CutPositions, Part, GridAssignment, PartDefinitions } from "./types";
+import type { ViewBox, CutPositions, Part, GridAssignment, PartDefsMap } from "./types";
+
+export const DEFAULT_PART_DEFS: PartDefsMap = {
+  corner:   { row: 0, col: 0, stretch: false },
+  line:     { row: 0, col: 1, stretch: true },
+  ornament: { row: 0, col: 2, stretch: false },
+};
 
 export const DEFAULT_GRID: GridAssignment = [
   ["corner", "line", "ornament", "line", "corner"],
@@ -8,13 +14,6 @@ export const DEFAULT_GRID: GridAssignment = [
   ["corner", "line", "ornament", "line", "corner"],
 ];
 
-export const DEFAULT_PART_DEFS: PartDefinitions = {
-  corner:   { row: 0, col: 0 },
-  line:     { row: 0, col: 1 },
-  ornament: { row: 0, col: 2 },
-};
-
-/** Which border cells can be assigned (not inner 3x3) */
 export function isBorderCell(row: number, col: number): boolean {
   return row === 0 || row === 4 || col === 0 || col === 4;
 }
@@ -28,7 +27,6 @@ export function computeDefaultCuts(viewBox: ViewBox): CutPositions {
   };
 }
 
-/** Get the x/y/w/h for a cell at (row, col) in the cut grid */
 export function getCellRect(viewBox: ViewBox, cuts: CutPositions, row: number, col: number) {
   const xEdges = [viewBox.x, cuts.x[0], cuts.x[1], cuts.x[2], cuts.x[3], viewBox.x + viewBox.width];
   const yEdges = [viewBox.y, cuts.y[0], cuts.y[1], cuts.y[2], cuts.y[3], viewBox.y + viewBox.height];
@@ -44,19 +42,15 @@ export function computeParts(
   viewBox: ViewBox,
   cuts: CutPositions,
   pathData: string,
-  defs: PartDefinitions = DEFAULT_PART_DEFS
-): { corner: Part; line: Part; ornament: Part } {
-  function makePart(def: { row: number; col: number }): Part {
+  defs: PartDefsMap = DEFAULT_PART_DEFS
+): Record<string, Part> {
+  const parts: Record<string, Part> = {};
+  for (const [id, def] of Object.entries(defs)) {
     const r = getCellRect(viewBox, cuts, def.row, def.col);
-    return {
+    parts[id] = {
       viewBox: `${r.x} ${r.y} ${r.w} ${r.h}`,
       path: pathData,
     };
   }
-
-  return {
-    corner: makePart(defs.corner),
-    line: makePart(defs.line),
-    ornament: makePart(defs.ornament),
-  };
+  return parts;
 }

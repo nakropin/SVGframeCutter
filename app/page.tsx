@@ -11,7 +11,7 @@ import { PartsPreview } from "@/components/cutter/PartsPreview";
 import { GridAssigner } from "@/components/cutter/GridAssigner";
 import { FramePreview } from "@/components/frame/FramePreview";
 import { Library } from "@/components/library/Library";
-import type { SvgData, CutPositions, FrameConfig, PartType, GridAssignment, PartDefinitions } from "@/lib/types";
+import type { SvgData, CutPositions, FrameConfig, GridAssignment, PartDefsMap } from "@/lib/types";
 
 type Tab = "library" | "cutter" | "preview";
 
@@ -29,8 +29,8 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>("library");
   const [fileName, setFileName] = useState("");
   const [grid, setGrid] = useState<GridAssignment>(cloneGrid(DEFAULT_GRID));
-  const [partDefs, setPartDefs] = useState<PartDefinitions>({ ...DEFAULT_PART_DEFS });
-  const [activePartType, setActivePartType] = useState<PartType | null>(null);
+  const [partDefs, setPartDefs] = useState<PartDefsMap>({ ...DEFAULT_PART_DEFS });
+  const [activePartId, setActivePartId] = useState<string | null>(null);
   const [squareCorners, setSquareCorners] = useState(true);
   const [libraryEntries, setLibraryEntries] = useState<LibraryEntry[]>([]);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
@@ -105,22 +105,40 @@ export default function Home() {
     }
   }, [cuts, svgData, squareCorners]);
 
-  // Click on SVG canvas zone → define which zone IS this part type
+  // Click on SVG canvas zone → define which zone IS this part
   const handleZoneClick = useCallback((row: number, col: number) => {
-    if (!activePartType) return;
-    setPartDefs(prev => ({ ...prev, [activePartType]: { row, col } }));
-    setActivePartType(null);
-  }, [activePartType]);
+    if (!activePartId) return;
+    setPartDefs(prev => {
+      const existing = prev[activePartId];
+      return { ...prev, [activePartId]: { ...existing, row, col } };
+    });
+    setActivePartId(null);
+  }, [activePartId]);
 
-  // Click on grid layout cell → assign/unassign a part type to a border cell
+  // Click on grid layout cell → assign/unassign a part to a border cell
   const handleGridCellClick = useCallback((row: number, col: number) => {
-    if (!activePartType || !isBorderCell(row, col)) return;
+    if (!activePartId || !isBorderCell(row, col)) return;
     setGrid(prev => {
       const next = cloneGrid(prev);
-      next[row][col] = prev[row][col] === activePartType ? null : activePartType;
+      next[row][col] = prev[row][col] === activePartId ? null : activePartId;
       return next;
     });
-  }, [activePartType]);
+  }, [activePartId]);
+
+  const handlePartAdd = useCallback((name: string, stretch: boolean) => {
+    setPartDefs(prev => ({ ...prev, [name]: { row: 0, col: 0, stretch } }));
+  }, []);
+
+  const handlePartRemove = useCallback((id: string) => {
+    setPartDefs(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    // Remove from grid
+    setGrid(prev => prev.map(row => row.map(cell => cell === id ? null : cell)));
+    if (activePartId === id) setActivePartId(null);
+  }, [activePartId]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -166,7 +184,7 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cuts, grid, partDefs]);
 
-  const openSvg = useCallback((text: string, name: string, entryCuts?: CutPositions, entryGrid?: GridAssignment, entryPartDefs?: PartDefinitions, entryId?: string) => {
+  const openSvg = useCallback((text: string, name: string, entryCuts?: CutPositions, entryGrid?: GridAssignment, entryPartDefs?: PartDefsMap, entryId?: string) => {
     const parsed = parseSvgString(text);
     const initialCuts = entryCuts ?? computeDefaultCuts(parsed.viewBox);
     setSvgData(parsed);
@@ -197,7 +215,7 @@ export default function Home() {
   }, [openSvg]);
 
   const handleLibrarySelect = useCallback((entry: LibraryEntry) => {
-    openSvg(entry.svgString, entry.name, entry.cuts, entry.zones as GridAssignment | undefined, entry.partDefs as PartDefinitions | undefined, entry.id);
+    openSvg(entry.svgString, entry.name, entry.cuts, entry.zones as GridAssignment | undefined, entry.partDefs as PartDefsMap | undefined, entry.id);
   }, [openSvg]);
 
   const handleLibraryDelete = useCallback((id: string) => {
@@ -291,7 +309,7 @@ export default function Home() {
         ) : tab === "cutter" && svgData && cuts ? (
           <div className="flex h-full">
             <div className="flex-1 p-4 flex items-center justify-center bg-neutral-950">
-              <SvgCanvas svgData={svgData} cuts={cuts} defaultCuts={defaultCuts!} partDefs={partDefs} activePartType={activePartType} onCutsChange={handleCutsChange} onZoneClick={handleZoneClick} />
+              <SvgCanvas svgData={svgData} cuts={cuts} defaultCuts={defaultCuts!} partDefs={partDefs} activePartId={activePartId} onCutsChange={handleCutsChange} onZoneClick={handleZoneClick} />
             </div>
             <div className="w-80 border-l border-neutral-800 p-4 overflow-y-auto space-y-6">
               <CutControls cuts={cuts} viewBox={svgData.viewBox} onCutsChange={handleCutsChange} />
@@ -304,8 +322,8 @@ export default function Home() {
                 />
                 Square corners
               </label>
-              {config && <PartsPreview config={config} fill={svgData.fill} activePartType={activePartType} onPartTypeSelect={setActivePartType} />}
-              <GridAssigner grid={grid} activePartType={activePartType} onCellClick={handleGridCellClick} />
+              {config && <PartsPreview config={config} partDefs={partDefs} fill={svgData.fill} activePartId={activePartId} onPartSelect={setActivePartId} onPartAdd={handlePartAdd} onPartRemove={handlePartRemove} />}
+              <GridAssigner grid={grid} partDefs={partDefs} activePartId={activePartId} onCellClick={handleGridCellClick} />
             </div>
           </div>
         ) : tab === "preview" && config ? (

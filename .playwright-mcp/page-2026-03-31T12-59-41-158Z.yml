@@ -1,0 +1,63 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - heading "frameCutter" [level=1] [ref=e4]
+      - generic [ref=e5]:
+        - button "Cutter" [ref=e6]
+        - button "Preview" [ref=e7]
+        - generic [ref=e9] [cursor=pointer]: Load SVG
+        - generic [ref=e10] [cursor=pointer]: Import JSON
+        - button "Export JSON" [ref=e24]
+    - generic [ref=e12]:
+      - img [ref=e26]
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - heading "Horizontal Cuts (X)" [level=3] [ref=e31]
+            - generic [ref=e32]: Corner | Line | Ornament | Line | Corner
+            - generic [ref=e33]:
+              - generic [ref=e34]:
+                - text: Cut 1
+                - spinbutton [ref=e35]: "182"
+              - generic [ref=e36]:
+                - text: Cut 2
+                - spinbutton [ref=e37]: "365"
+              - generic [ref=e38]:
+                - text: Cut 3
+                - spinbutton [ref=e39]: "547"
+              - generic [ref=e40]:
+                - text: Cut 4
+                - spinbutton [ref=e41]: "730"
+          - generic [ref=e42]:
+            - heading "Vertical Cuts (Y)" [level=3] [ref=e43]
+            - generic [ref=e44]:
+              - generic [ref=e45]:
+                - text: Cut 1
+                - spinbutton [ref=e46]: "122"
+              - generic [ref=e47]:
+                - text: Cut 2
+                - spinbutton [ref=e48]: "245"
+              - generic [ref=e49]:
+                - text: Cut 3
+                - spinbutton [ref=e50]: "367"
+              - generic [ref=e51]:
+                - text: Cut 4
+                - spinbutton [ref=e52]: "490"
+        - generic [ref=e53]:
+          - heading "Extracted Parts" [level=3] [ref=e54]
+          - generic [ref=e55]:
+            - generic [ref=e56]:
+              - paragraph [ref=e57]: Corner
+              - img [ref=e59]
+              - paragraph [ref=e61]: 0 0 182.4 122.4
+            - generic [ref=e62]:
+              - paragraph [ref=e63]: Line
+              - img [ref=e65]
+              - paragraph [ref=e67]: 182.4 0 182.4 122.4
+            - generic [ref=e68]:
+              - paragraph [ref=e69]: Ornament
+              - img [ref=e71]
+              - paragraph [ref=e73]: 364.8 0 182.40000000000003 122.4
+  - button "Open Next.js Dev Tools" [ref=e19] [cursor=pointer]:
+    - img [ref=e20]
+  - alert [ref=e23]

@@ -6,43 +6,39 @@ export interface ViewBox {
 }
 
 export interface CutPositions {
-  x: [number, number, number, number]; // cut1..cut4 along horizontal axis
-  y: [number, number, number, number]; // cut1..cut4 along vertical axis
+  x: [number, number, number, number];
+  y: [number, number, number, number];
 }
 
 export interface Part {
-  viewBox: string; // "x y w h" format for SVG viewBox attribute
-  path: string;    // SVG path d attribute
+  viewBox: string;
+  path: string;
 }
 
-export type PartType = "corner" | "line" | "ornament";
-
-// Which zone (row,col) in the 5x5 cut grid defines each part's clip region
-export interface PartDefinitions {
-  corner: { row: number; col: number };
-  line: { row: number; col: number };
-  ornament: { row: number; col: number };
+/** Definition of a single part type */
+export interface PartDef {
+  row: number;     // canonical zone row
+  col: number;     // canonical zone col
+  stretch: boolean; // true = stretches to fill (like lines), false = preserves aspect ratio
 }
 
-// 5x5 grid assignment. null = empty (inner content area or unassigned border cell)
-// Row-major: grid[row][col]
-export type GridAssignment = (PartType | null)[][];
+/** All part definitions keyed by part ID */
+export type PartDefsMap = Record<string, PartDef>;
+
+/** 5x5 grid assignment. null = empty, string = part ID */
+export type GridAssignment = (string | null)[][];
 
 export interface FrameConfig {
   name: string;
   sourceViewBox: ViewBox;
   cuts: CutPositions;
   grid: GridAssignment;
-  partDefs: PartDefinitions;
-  parts: {
-    corner: Part;
-    line: Part;
-    ornament: Part;
-  };
+  partDefs: PartDefsMap;
+  parts: Record<string, Part>;
 }
 
 export interface SvgData {
   viewBox: ViewBox;
-  paths: string[];   // all <path> d attributes found in the SVG
-  fill: string;       // fill color from the SVG (e.g., "#fff")
+  paths: string[];
+  fill: string;
 }

@@ -1,4 +1,4 @@
-import type { CutPositions, GridAssignment, PartDefinitions } from "./types";
+import type { CutPositions, GridAssignment, PartDefsMap } from "./types";
 
 export interface LibraryEntry {
   id: string;
@@ -6,7 +6,7 @@ export interface LibraryEntry {
   svgString: string;
   cuts?: CutPositions;
   zones?: GridAssignment;
-  partDefs?: PartDefinitions;
+  partDefs?: PartDefsMap;
   updatedAt: number;
 }
 
