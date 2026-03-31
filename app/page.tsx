@@ -121,11 +121,11 @@ export default function Home() {
   const handleGridCellClick = useCallback((row: number, col: number) => {
     if (!activePartId || !isBorderCell(row, col, gridSize)) return;
     setGrid(prev => {
-      const next = cloneGrid(prev);
+      const next = cloneGrid(prev, gridSize);
       next[row][col] = prev[row][col] === activePartId ? null : activePartId;
       return next;
     });
-  }, [activePartId]);
+  }, [activePartId, gridSize]);
 
   const handlePartAdd = useCallback((name: string, stretch: boolean) => {
     setPartDefs(prev => ({ ...prev, [name]: { row: 0, col: 0, stretch } }));
