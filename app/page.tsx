@@ -31,6 +31,7 @@ export default function Home() {
   const [grid, setGrid] = useState<GridAssignment>(cloneGrid(DEFAULT_GRID));
   const [partDefs, setPartDefs] = useState<PartDefinitions>({ ...DEFAULT_PART_DEFS });
   const [activePartType, setActivePartType] = useState<PartType | null>(null);
+  const [squareCorners, setSquareCorners] = useState(true);
   const [libraryEntries, setLibraryEntries] = useState<LibraryEntry[]>([]);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
 
@@ -79,21 +80,22 @@ export default function Home() {
           }
         }
 
-        // Square corners: cut[0] X and cut[0] Y should define equal-sized corner
-        // When X cut[0] changes, sync Y cut[0] to same distance (and mirrors)
-        const xChanged0 = symmetric.x[0] !== old.x[0];
-        const yChanged0 = symmetric.y[0] !== old.y[0];
-        const xChanged3 = newCuts.x[3] !== old.x[3];
-        const yChanged3 = newCuts.y[3] !== old.y[3];
+        // Square corners: keep X and Y corner cuts equal
+        if (squareCorners) {
+          const xChanged0 = symmetric.x[0] !== old.x[0];
+          const yChanged0 = symmetric.y[0] !== old.y[0];
+          const xChanged3 = newCuts.x[3] !== old.x[3];
+          const yChanged3 = newCuts.y[3] !== old.y[3];
 
-        if (xChanged0 || xChanged3) {
-          const cornerSize = symmetric.x[0] - viewBox.x;
-          symmetric.y[0] = Math.round(viewBox.y + cornerSize);
-          symmetric.y[3] = Math.round(mirrorY(viewBox.y + cornerSize));
-        } else if (yChanged0 || yChanged3) {
-          const cornerSize = symmetric.y[0] - viewBox.y;
-          symmetric.x[0] = Math.round(viewBox.x + cornerSize);
-          symmetric.x[3] = Math.round(mirrorX(viewBox.x + cornerSize));
+          if (xChanged0 || xChanged3) {
+            const cornerSize = symmetric.x[0] - viewBox.x;
+            symmetric.y[0] = Math.round(viewBox.y + cornerSize);
+            symmetric.y[3] = Math.round(mirrorY(viewBox.y + cornerSize));
+          } else if (yChanged0 || yChanged3) {
+            const cornerSize = symmetric.y[0] - viewBox.y;
+            symmetric.x[0] = Math.round(viewBox.x + cornerSize);
+            symmetric.x[3] = Math.round(mirrorX(viewBox.x + cornerSize));
+          }
         }
       }
 
@@ -101,7 +103,7 @@ export default function Home() {
     } else {
       setCuts(newCuts);
     }
-  }, [cuts, svgData]);
+  }, [cuts, svgData, squareCorners]);
 
   // Click on SVG canvas zone → define which zone IS this part type
   const handleZoneClick = useCallback((row: number, col: number) => {
@@ -293,6 +295,15 @@ export default function Home() {
             </div>
             <div className="w-80 border-l border-neutral-800 p-4 overflow-y-auto space-y-6">
               <CutControls cuts={cuts} viewBox={svgData.viewBox} onCutsChange={handleCutsChange} />
+              <label className="flex items-center gap-2 text-sm text-neutral-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={squareCorners}
+                  onChange={(e) => setSquareCorners(e.target.checked)}
+                  className="accent-cyan-400"
+                />
+                Square corners
+              </label>
               {config && <PartsPreview config={config} fill={svgData.fill} activePartType={activePartType} onPartTypeSelect={setActivePartType} />}
               <GridAssigner grid={grid} activePartType={activePartType} onCellClick={handleGridCellClick} />
             </div>
