@@ -111,7 +111,9 @@ export function SvgCanvas({ svgData, cuts, defaultCuts, partDefs, activePartId, 
     <svg
       ref={svgRef}
       viewBox={vbString}
-      className="w-full h-full max-w-full max-h-full"
+      width="100%"
+      height="100%"
+      style={{ display: "block", maxWidth: "100%", maxHeight: "100%" }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
