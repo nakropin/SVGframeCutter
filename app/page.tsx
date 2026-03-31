@@ -202,7 +202,7 @@ export default function Home() {
       const name = fileName.replace(/\.svg$/i, "") || "Frame";
       setConfig(buildFrameConfig(name, svgData, cuts, grid, partDefs, gridCols, gridRows));
     }
-  }, [svgData, cuts, fileName, grid, partDefs]);
+  }, [svgData, cuts, fileName, grid, partDefs, gridCols, gridRows]);
 
   // Auto-save to library when cuts, grid, or partDefs change (only if entry exists)
   useEffect(() => {
