@@ -19,14 +19,14 @@ describe("computeDefaultCuts", () => {
 });
 
 describe("buildDefaultGrid", () => {
-  it("builds a 3x1 grid with only left/right borders", () => {
+  it("builds a 3x1 grid with all cells as line", () => {
     const grid = buildDefaultGrid(3, 1);
-    expect(grid).toEqual([["line", null, "line"]]);
+    expect(grid).toEqual([["line", "line", "line"]]);
   });
 
-  it("builds a 1x3 grid with only top/bottom borders", () => {
+  it("builds a 1x3 grid with all cells as line", () => {
     const grid = buildDefaultGrid(1, 3);
-    expect(grid).toEqual([["line"], [null], ["line"]]);
+    expect(grid).toEqual([["line"], ["line"], ["line"]]);
   });
 });
 

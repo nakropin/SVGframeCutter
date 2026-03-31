@@ -121,9 +121,9 @@ export function ResponsiveFrame({
 
   // Build grid templates: alternating fixed (t) and flexible (1fr)
   const buildTemplate = (size: number) =>
-    size === 1 ? "1fr" : Array.from({ length: size }, (_, i) => i % 2 === 0 ? t : "1fr").join(" ");
-  const colTemplate = buildTemplate(cols);
-  const rowTemplate = buildTemplate(rows);
+    Array.from({ length: size }, (_, i) => i % 2 === 0 ? t : "1fr").join(" ");
+  const colTemplate = cols === 1 ? "1fr" : buildTemplate(cols);
+  const rowTemplate = rows === 1 ? "1fr" : buildTemplate(rows);
 
   // Content area spans inner cells
   const contentCol = cols === 1 ? "1 / 2" : `2 / ${cols}`;

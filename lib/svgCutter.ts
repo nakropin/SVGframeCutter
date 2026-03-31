@@ -31,9 +31,11 @@ export function buildDefaultGrid(cols: number, rows: number): GridAssignment {
   const lastC = cols - 1;
   return Array.from({ length: rows }, (_, r) =>
     Array.from({ length: cols }, (_, c) => {
+      // Single-axis grids: all cells are frame pieces
+      if (rows === 1 || cols === 1) return "line";
       if (!isBorderCell(r, c, rows, cols)) return null;
-      const isCornerRow = rows > 1 && (r === 0 || r === lastR);
-      const isCornerCol = cols > 1 && (c === 0 || c === lastC);
+      const isCornerRow = r === 0 || r === lastR;
+      const isCornerCol = c === 0 || c === lastC;
       if (isCornerRow && isCornerCol) return "corner";
       return "line";
     })
