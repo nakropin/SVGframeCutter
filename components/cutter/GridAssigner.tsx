@@ -1,7 +1,6 @@
 "use client";
 
 import type { GridAssignment, PartDefsMap } from "@/lib/types";
-import { isBorderCell } from "@/lib/svgCutter";
 import { getPartColorById } from "@/components/cutter/PartsPreview";
 
 interface GridAssignerProps {
@@ -13,7 +12,6 @@ interface GridAssignerProps {
 
 export function GridAssigner({ grid, partDefs, activePartId, onCellClick }: GridAssignerProps) {
   const partIds = Object.keys(partDefs);
-  const rows = grid.length;
   const cols = grid[0]?.length ?? 0;
 
   return (
@@ -21,18 +19,13 @@ export function GridAssigner({ grid, partDefs, activePartId, onCellClick }: Grid
       <h3 className="text-xs uppercase tracking-wider text-neutral-500">
         Grid Layout
         {activePartId && (
-          <span className="text-cyan-400 ml-2">— click a border cell</span>
+          <span className="text-cyan-400 ml-2">— click a cell</span>
         )}
       </h3>
       <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
         {grid.map((row, r) =>
           row.map((cell, c) => {
-            const border = isBorderCell(r, c, rows, cols);
             const color = cell ? getPartColorById(cell, partIds) : null;
-
-            if (!border) {
-              return <div key={`${r}-${c}`} className="aspect-square bg-neutral-900/30 rounded-sm" />;
-            }
 
             return (
               <button

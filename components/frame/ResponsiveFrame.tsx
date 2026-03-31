@@ -147,15 +147,7 @@ export function ResponsiveFrame({
 
       {grid.map((row, r) =>
         row.map((cell, c) => {
-          // Skip interior cells
-          const isInnerRow = rows > 1 && r >= 1 && r <= rows - 2;
-          const isInnerCol = cols > 1 && c >= 1 && c <= cols - 2;
-          if (isInnerRow && isInnerCol) return null;
-          // Skip cells on axes with only 1 track (no border there)
-          if (rows === 1 && cols > 1 && c >= 1 && c <= cols - 2) return null;
-          if (cols === 1 && rows > 1 && r >= 1 && r <= rows - 2) return null;
-
-          if (!cell) return <div key={`${r}-${c}`} style={{ gridColumn: c + 1, gridRow: r + 1 }} />;
+          if (!cell) return null;
 
           const { viewBox, cssTransform, svgTransform } = computeCellRendering(config, cell, r, c);
           const stretch = partDefs[cell]?.stretch ?? false;

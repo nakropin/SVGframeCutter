@@ -136,7 +136,7 @@ export default function Home() {
 
   // Click on grid layout cell → assign/unassign a part to a border cell
   const handleGridCellClick = useCallback((row: number, col: number) => {
-    if (!activePartId || !isBorderCell(row, col, gridRows, gridCols)) return;
+    if (!activePartId) return;
     setGrid(prev => {
       const next = cloneGrid(prev, gridCols, gridRows);
       next[row][col] = prev[row][col] === activePartId ? null : activePartId;
